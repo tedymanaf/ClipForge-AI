@@ -10,9 +10,20 @@ import { selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
 
 export default function ExportPage() {
   const params = useParams<{ id: string }>();
+  const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
   const clip = project?.clips[0];
+
+  if (!hydrated) {
+    return (
+      <AppShell title="Loading export" eyebrow="Distribution Center">
+        <Card>
+          <p className="text-white/70">Preparing export data...</p>
+        </Card>
+      </AppShell>
+    );
+  }
 
   if (!project || !clip) {
     return (

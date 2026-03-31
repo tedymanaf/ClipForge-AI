@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,10 @@ export function Settings() {
   const preferences = useClipForgeStore((state) => state.preferences);
   const setPreferences = useClipForgeStore((state) => state.setPreferences);
   const [draft, setDraft] = useState(preferences);
+
+  useEffect(() => {
+    setDraft(preferences);
+  }, [preferences]);
 
   return (
     <div className="grid gap-6 xl:grid-cols-2">

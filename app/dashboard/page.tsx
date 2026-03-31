@@ -49,7 +49,9 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="font-medium text-white">Recent source videos</p>
-                <p className="text-sm text-white/55">Each project stores transcript, clip candidates, captions, thumbnails, and metadata.</p>
+                <p className="text-sm text-white/55">
+                  Each project stores transcript, clip candidates, captions, thumbnails, and metadata.
+                </p>
               </div>
             </div>
             <div className="space-y-3">
@@ -74,7 +76,9 @@ export default function DashboardPage() {
           <Card className="space-y-4">
             <div>
               <p className="font-medium text-white">Workflow highlights</p>
-              <p className="text-sm text-white/55">The app is structured around a one-pass automated pipeline with optional fine tuning.</p>
+              <p className="text-sm text-white/55">
+                The app is structured around a one-pass automated pipeline with optional fine tuning.
+              </p>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {[

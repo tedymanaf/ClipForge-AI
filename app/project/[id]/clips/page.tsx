@@ -13,9 +13,20 @@ import { selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
 
 export default function ClipsPage() {
   const params = useParams<{ id: string }>();
+  const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
   const [query, setQuery] = useState("");
+
+  if (!hydrated) {
+    return (
+      <AppShell title="Loading project" eyebrow="Review & Approve">
+        <Card>
+          <p className="text-white/70">Restoring project data...</p>
+        </Card>
+      </AppShell>
+    );
+  }
 
   if (!project) {
     return (

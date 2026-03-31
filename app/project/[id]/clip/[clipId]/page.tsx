@@ -15,9 +15,20 @@ import { selectClip, selectProject, useClipForgeStore } from "@/store/useClipFor
 
 export default function ClipDetailPage() {
   const params = useParams<{ id: string; clipId: string }>();
+  const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
   const clip = useMemo(() => selectClip(project, params.clipId), [project, params.clipId]);
+
+  if (!hydrated) {
+    return (
+      <AppShell title="Loading clip" eyebrow="Manual Fine Tuning">
+        <Card>
+          <p className="text-white/70">Restoring clip data...</p>
+        </Card>
+      </AppShell>
+    );
+  }
 
   if (!project || !clip) {
     return (

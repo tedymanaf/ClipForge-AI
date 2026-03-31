@@ -158,7 +158,7 @@ export function UploadEngine() {
     const project = createProjectFromUpload(descriptor);
     updateQueueItem(descriptor.id, { progress: 100, status: "queued" });
     setTimeout(() => removeQueueItem(descriptor.id), 1000);
-    router.push(`/project/${project.id}/processing`);
+    return project;
   }
 
   async function handleFiles(files: FileList | File[]) {
@@ -185,8 +185,15 @@ export function UploadEngine() {
 
     try {
       const descriptors = await Promise.all(selected.map((file) => extractVideoMetadata(file)));
+      const createdProjects = [];
       for (const descriptor of descriptors) {
-        await processDescriptor(descriptor);
+        const project = await processDescriptor(descriptor);
+        createdProjects.push(project);
+      }
+
+      const firstProject = createdProjects[0];
+      if (firstProject) {
+        router.push(`/project/${firstProject.id}/processing`);
       }
     } finally {
       setWorking(false);
@@ -214,8 +221,12 @@ export function UploadEngine() {
     };
 
     setWorking(true);
-    await processDescriptor(descriptor);
-    setWorking(false);
+    try {
+      const project = await processDescriptor(descriptor);
+      router.push(`/project/${project.id}/processing`);
+    } finally {
+      setWorking(false);
+    }
   }
 
   function activateDemoMode() {

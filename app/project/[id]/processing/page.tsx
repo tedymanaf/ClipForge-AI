@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -16,48 +16,97 @@ import { selectProject } from "@/store/useClipForgeStore";
 
 export default function ProcessingPage() {
   const params = useParams<{ id: string }>();
+  const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const updateProject = useClipForgeStore((state) => state.updateProject);
   const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
+  const initializedProjectRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!project || project.status === "ready" || project.progress >= 100) {
+    if (!hydrated || !params.id) {
       return;
     }
 
-    let progress = Math.max(project.progress, 8);
+    const projectId = params.id;
+    let analyzing = false;
 
-    updateProject(project.id, (current) => ({
-      ...current,
-      status: "processing",
-      progress,
-      processingSteps: getProcessingSnapshot(progress).steps
-    }));
+    const ensureInitialized = () => {
+      const current = useClipForgeStore.getState().projects.find((item) => item.id === projectId);
+      if (!current || current.status === "ready") {
+        return false;
+      }
 
-    const interval = window.setInterval(async () => {
-      progress = Math.min(progress + 12, 100);
+      if (initializedProjectRef.current === projectId) {
+        return true;
+      }
+
+      const progress = Math.max(current.progress, 8);
       const snapshot = getProcessingSnapshot(progress);
+      initializedProjectRef.current = projectId;
 
-      updateProject(project.id, (current) => ({
-        ...current,
-        status: progress >= 100 ? "processing" : "processing",
+      updateProject(projectId, (item) => ({
+        ...item,
+        status: "processing",
         progress,
         insight: snapshot.message,
         processingSteps: snapshot.steps
       }));
 
-      if (progress >= 100) {
+      return true;
+    };
+
+    const interval = window.setInterval(async () => {
+      const current = useClipForgeStore.getState().projects.find((item) => item.id === projectId);
+
+      if (!current) {
         window.clearInterval(interval);
-        const current = useClipForgeStore.getState().projects.find((item) => item.id === project.id);
-        if (current) {
-          const analyzed = await analyzeProject(current);
-          updateProject(project.id, () => analyzed);
+        initializedProjectRef.current = null;
+        return;
+      }
+
+      if (current.status === "ready") {
+        window.clearInterval(interval);
+        initializedProjectRef.current = null;
+        return;
+      }
+
+      const progress = Math.min(Math.max(current.progress, 8) + 12, 100);
+      const snapshot = getProcessingSnapshot(progress);
+
+      updateProject(projectId, (item) => ({
+        ...item,
+        status: "processing",
+        progress,
+        insight: snapshot.message,
+        processingSteps: snapshot.steps
+      }));
+
+      if (progress >= 100 && !analyzing) {
+        analyzing = true;
+        window.clearInterval(interval);
+        const fresh = useClipForgeStore.getState().projects.find((item) => item.id === projectId);
+        if (fresh) {
+          const analyzed = await analyzeProject(fresh);
+          updateProject(projectId, () => analyzed);
         }
+        initializedProjectRef.current = null;
       }
     }, 700);
 
+    ensureInitialized();
+
     return () => window.clearInterval(interval);
-  }, [project, updateProject]);
+  }, [hydrated, params.id, updateProject]);
+
+  if (!hydrated) {
+    return (
+      <AppShell title="Loading project" eyebrow="Pipeline Status">
+        <Card>
+          <p className="text-white/70">Restoring project data...</p>
+        </Card>
+      </AppShell>
+    );
+  }
 
   if (!project) {
     return (

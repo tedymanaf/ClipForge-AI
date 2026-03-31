@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,11 +15,18 @@ const steps = [
 ];
 
 export function OnboardingOverlay() {
+  const hydrated = useClipForgeStore((state) => state.hydrated);
   const onboardingSeen = useClipForgeStore((state) => state.onboardingSeen);
   const markOnboardingSeen = useClipForgeStore((state) => state.markOnboardingSeen);
-  const [open, setOpen] = useState(!onboardingSeen);
+  const [open, setOpen] = useState(false);
 
-  if (!open) {
+  useEffect(() => {
+    if (hydrated) {
+      setOpen(!onboardingSeen);
+    }
+  }, [hydrated, onboardingSeen]);
+
+  if (!hydrated || !open) {
     return null;
   }
 
