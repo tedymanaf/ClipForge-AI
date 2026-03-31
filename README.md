@@ -1,0 +1,62 @@
+# ClipForge AI
+
+ClipForge AI is a modular Next.js 14 application for turning long-form videos into viral-ready short clips.
+
+Core flow:
+
+1. Upload a video or import from URL
+2. Review AI-ranked clip candidates
+3. Export a ready-to-post package
+
+## Stack
+
+- Next.js 14 App Router
+- TypeScript
+- Tailwind CSS
+- Framer Motion
+- Zustand
+- Recharts
+
+## Included Modules
+
+- `modules/upload/UploadEngine.tsx`
+- `modules/analysis/AnalysisEngine.ts`
+- `modules/clipper/ClipGenerator.ts`
+- `modules/captions/CaptionEngine.tsx`
+- `modules/thumbnail/ThumbnailEngine.ts`
+- `modules/metadata/MetadataEngine.ts`
+- `modules/editor/ClipEditor.tsx`
+- `modules/export/ExportCenter.tsx`
+- `modules/analytics/AnalyticsDashboard.tsx`
+- `modules/settings/Settings.tsx`
+
+## API Routes
+
+- `POST /api/upload`
+- `POST /api/transcribe`
+- `POST /api/analyze`
+- `POST /api/clip`
+- `POST /api/caption`
+- `POST /api/thumbnail`
+- `POST /api/metadata`
+- `GET /api/progress/[id]`
+- `POST /api/export`
+- `POST /api/publish/tiktok`
+- `POST /api/publish/youtube`
+- `POST /api/publish/instagram`
+
+## Run Locally
+
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+## Notes
+
+- Demo projects are seeded automatically on first launch.
+- The current build includes production-oriented structure with mock-friendly AI and media pipelines.
+- Upload storage writes to `storage/uploads/`.
+- Export ZIP currently contains metadata and caption outputs plus placeholder media artifacts until FFmpeg rendering is wired to real binaries.

@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 240 18% 5%;
+  --foreground: 240 43% 98%;
+  --muted-foreground: 222 9% 62%;
+  --border: 243 24% 20%;
+  --input: 243 24% 20%;
+  --ring: 263 81% 58%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(124, 58, 237, 0.22), transparent 28%),
+    radial-gradient(circle at 85% 10%, rgba(6, 182, 212, 0.16), transparent 24%),
+    linear-gradient(180deg, #09090f 0%, #0b0d14 40%, #07070b 100%);
+  color: #f8f8ff;
+  text-rendering: optimizeLegibility;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(124, 58, 237, 0.35);
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/10 bg-white/5 backdrop-blur-xl;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02), 0 22px 80px rgba(0, 0, 0, 0.36);
+  }
+
+  .glass-card {
+    @apply glass-panel rounded-[28px];
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-white via-cyan-200 to-violet-300 bg-clip-text text-transparent;
+  }
+
+  .hero-orb {
+    @apply absolute rounded-full blur-3xl;
+  }
+}

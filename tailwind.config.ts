@@ -1,0 +1,91 @@
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  darkMode: ["class"],
+  content: [
+    "./app/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./modules/**/*.{ts,tsx}",
+    "./store/**/*.{ts,tsx}",
+    "./lib/**/*.{ts,tsx}",
+    "./types/**/*.{ts,tsx}"
+  ],
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "#7C3AED",
+          foreground: "#F8F8FF"
+        },
+        accent: {
+          DEFAULT: "#06B6D4",
+          foreground: "#F8F8FF"
+        },
+        success: {
+          DEFAULT: "#10B981",
+          foreground: "#04120d"
+        },
+        surface: "#13131A",
+        surface2: "#1C1C28",
+        muted: "#6B7280",
+        chart: {
+          1: "#7C3AED",
+          2: "#06B6D4",
+          3: "#10B981",
+          4: "#F59E0B",
+          5: "#F43F5E"
+        }
+      },
+      borderRadius: {
+        lg: "1.25rem",
+        md: "1rem",
+        sm: "0.75rem"
+      },
+      boxShadow: {
+        glow: "0 0 0 1px rgba(124,58,237,0.25), 0 0 30px rgba(124,58,237,0.18)",
+        cyan: "0 0 0 1px rgba(6,182,212,0.22), 0 0 26px rgba(6,182,212,0.16)"
+      },
+      backgroundImage: {
+        "hero-grid":
+          "radial-gradient(circle at top, rgba(124,58,237,0.28), transparent 30%), radial-gradient(circle at 80% 20%, rgba(6,182,212,0.20), transparent 25%), linear-gradient(135deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+        "surface-glass":
+          "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))"
+      },
+      backgroundSize: {
+        grid: "24px 24px"
+      },
+      animation: {
+        float: "float 6s ease-in-out infinite",
+        pulseGlow: "pulseGlow 2.4s ease-in-out infinite",
+        marquee: "marquee 18s linear infinite",
+        shine: "shine 2s linear infinite"
+      },
+      keyframes: {
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-12px)" }
+        },
+        pulseGlow: {
+          "0%, 100%": { boxShadow: "0 0 0 1px rgba(124,58,237,0.22), 0 0 24px rgba(124,58,237,0.12)" },
+          "50%": { boxShadow: "0 0 0 1px rgba(6,182,212,0.28), 0 0 36px rgba(6,182,212,0.16)" }
+        },
+        marquee: {
+          "0%": { transform: "translateX(0%)" },
+          "100%": { transform: "translateX(-50%)" }
+        },
+        shine: {
+          "0%": { transform: "translateX(-120%)" },
+          "100%": { transform: "translateX(220%)" }
+        }
+      }
+    }
+  },
+  plugins: []
+};
+
+export default config;

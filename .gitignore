@@ -1,0 +1,12 @@
+.next
+node_modules
+dist
+coverage
+storage
+*.log
+*.zip
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
