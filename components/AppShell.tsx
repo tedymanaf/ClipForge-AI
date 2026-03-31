@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { BarChart3, Clapperboard, Home, Library, Settings2, UploadCloud } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -28,6 +28,15 @@ export function AppShell({
   actions?: ReactNode;
 }) {
   const pathname = usePathname();
+  const [hash, setHash] = useState("");
+
+  useEffect(() => {
+    const syncHash = () => setHash(window.location.hash);
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -48,7 +57,8 @@ export function AppShell({
           <nav className="space-y-2">
             {navigation.map((item) => {
               const Icon = item.icon;
-              const active = pathname === item.href;
+              const [itemPath, itemHash = ""] = item.href.split("#");
+              const active = pathname === itemPath && (itemHash ? hash === `#${itemHash}` : hash === "");
 
               return (
                 <Link

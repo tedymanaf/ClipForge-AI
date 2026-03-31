@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { ExportCenter } from "@/modules/export/ExportCenter";
+import { selectClip } from "@/store/useClipForgeStore";
 import { selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
 
 export default function ExportPage() {
@@ -13,7 +14,16 @@ export default function ExportPage() {
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
-  const clip = project?.clips[0];
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const clip = useMemo(
+    () => (selectedClipId ? selectClip(project, selectedClipId) : project?.clips[0]),
+    [project, selectedClipId]
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setSelectedClipId(params.get("clipId"));
+  }, []);
 
   if (!hydrated) {
     return (
@@ -37,7 +47,7 @@ export default function ExportPage() {
 
   return (
     <AppShell title={`Export ${project.name}`} eyebrow="Distribution Center">
-      <ExportCenter clip={clip} />
+      <ExportCenter clip={clip} metadata={project.metadata[clip.id]} />
     </AppShell>
   );
 }

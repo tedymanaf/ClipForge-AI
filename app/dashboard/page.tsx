@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, Film, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { AnalyticsDashboard } from "@/modules/analytics/AnalyticsDashboard";
 import { Settings } from "@/modules/settings/Settings";
@@ -16,8 +18,23 @@ import { useClipForgeStore } from "@/store/useClipForgeStore";
 import { formatBytes, formatDuration } from "@/lib/utils";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const projects = useClipForgeStore((state) => state.projects);
+  const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const project = projects[0];
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") !== "1") {
+      return;
+    }
+
+    seedDemoProjects();
+    const firstProject = useClipForgeStore.getState().projects[0];
+    if (firstProject) {
+      router.replace(`/project/${firstProject.id}/clips`);
+    }
+  }, [router, seedDemoProjects]);
 
   return (
     <>

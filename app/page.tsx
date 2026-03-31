@@ -49,7 +49,8 @@ export default function LandingPage() {
               <span className="text-gradient block">Go Viral Everywhere.</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/65">
-              Intelligent long-form to shorts engine with hook scoring, animated captions, thumbnail generation, metadata copywriting, and export bundles for TikTok, Reels, and Shorts.
+              Intelligent long-form to shorts engine with hook scoring, animated captions, thumbnail generation,
+              metadata copywriting, and export bundles for TikTok, Reels, and Shorts.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link href="/dashboard">
@@ -58,7 +59,7 @@ export default function LandingPage() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/dashboard#upload">
+              <Link href="/dashboard?demo=1">
                 <Button size="lg" variant="outline">
                   Try without upload
                 </Button>
@@ -75,7 +76,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <p className="font-semibold text-white">Automated 3-click workflow</p>
-                  <p className="text-sm text-white/55">Upload → Review → Export</p>
+                  <p className="text-sm text-white/55">Upload - Review - Export</p>
                 </div>
               </div>
               <div className="space-y-3">

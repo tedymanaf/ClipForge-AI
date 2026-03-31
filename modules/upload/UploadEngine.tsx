@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Film, Link2, LoaderCircle, UploadCloud, Youtube } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -275,7 +276,7 @@ export function UploadEngine() {
               MP4, MOV, AVI, MKV, WebM hingga 4GB. Batch sampai 5 video sekaligus, thumbnail preview otomatis, plus metadata dasar seperti durasi, resolusi, dan codec.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Button className="gap-2">
+              <Button type="button" className="gap-2">
                 <Film className="h-4 w-4" />
                 Choose Videos
               </Button>
@@ -328,7 +329,11 @@ export function UploadEngine() {
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {recentProjects.map((project) => (
-              <div key={project.id} className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+              <Link
+                key={project.id}
+                href={`/project/${project.id}/clips`}
+                className="rounded-[24px] border border-white/10 bg-black/20 p-4 transition hover:border-cyan-300/25 hover:bg-black/30"
+              >
                 <div
                   className="aspect-video rounded-2xl border border-white/10 bg-cover bg-center"
                   style={{ backgroundImage: `url("${project.asset.thumbnail}")` }}
@@ -339,7 +344,7 @@ export function UploadEngine() {
                   <span>{project.asset.width}x{project.asset.height}</span>
                   <span>{formatBytes(project.asset.sizeBytes)}</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

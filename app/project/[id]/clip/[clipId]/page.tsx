@@ -45,7 +45,7 @@ export default function ClipDetailPage() {
       title={clip.title}
       eyebrow="Manual Fine Tuning"
       actions={
-        <Link href={`/project/${project.id}/export`}>
+        <Link href={`/project/${project.id}/export?clipId=${clip.id}`}>
           <Button className="gap-2">
             Export Clip
             <ArrowRight className="h-4 w-4" />

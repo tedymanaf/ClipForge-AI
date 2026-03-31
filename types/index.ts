@@ -197,3 +197,8 @@ export interface AppPreferences {
   notifications: boolean;
   demoMode: boolean;
 }
+
+export interface ProjectHistory {
+  past: Project[];
+  future: Project[];
+}

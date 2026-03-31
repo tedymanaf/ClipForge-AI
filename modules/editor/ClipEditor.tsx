@@ -6,6 +6,8 @@ import { CaptionEngine } from "@/modules/captions/CaptionEngine";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useClipForgeStore } from "@/store/useClipForgeStore";
 import { ClipCandidate, Project } from "@/types";
 import { formatDuration } from "@/lib/utils";
 
@@ -17,6 +19,15 @@ export function ClipEditor({
   clip: ClipCandidate;
 }) {
   const cues = project.captions[clip.id] ?? [];
+  const setProjectCaptionStyle = useClipForgeStore((state) => state.setProjectCaptionStyle);
+  const updateCaptionCue = useClipForgeStore((state) => state.updateCaptionCue);
+  const undoProjectEdit = useClipForgeStore((state) => state.undoProjectEdit);
+  const redoProjectEdit = useClipForgeStore((state) => state.redoProjectEdit);
+  const canUndoProjectEdit = useClipForgeStore((state) => state.canUndoProjectEdit);
+  const canRedoProjectEdit = useClipForgeStore((state) => state.canRedoProjectEdit);
+
+  const canUndo = canUndoProjectEdit(project.id);
+  const canRedo = canRedoProjectEdit(project.id);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.15fr_0.9fr]">
@@ -44,7 +55,14 @@ export function ClipEditor({
               <p className="font-medium text-white">Timeline</p>
               <p className="text-sm text-white/55">Non-destructive trim, transcript-aligned editing, and waveform overview.</p>
             </div>
-            <Button variant="outline" size="sm">Undo / Redo</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => undoProjectEdit(project.id)} disabled={!canUndo}>
+                Undo
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => redoProjectEdit(project.id)} disabled={!canRedo}>
+                Redo
+              </Button>
+            </div>
           </div>
           <div className="rounded-[24px] border border-white/10 bg-black/20 p-5">
             <div className="mb-4 flex items-center justify-between text-sm text-white/50">
@@ -91,7 +109,11 @@ export function ClipEditor({
           </div>
         </Card>
 
-        <CaptionEngine cues={cues} selectedStyle={project.settings.captionStyle} />
+        <CaptionEngine
+          cues={cues}
+          selectedStyle={project.settings.captionStyle}
+          onSelectStyle={(style) => setProjectCaptionStyle(project.id, style)}
+        />
       </div>
 
       <Card className="space-y-4">
@@ -104,6 +126,21 @@ export function ClipEditor({
             <div key={title} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
               {title}
             </div>
+          ))}
+        </div>
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-white">Caption lines</p>
+          {cues.slice(0, 4).map((cue) => (
+            <Textarea
+              key={cue.id}
+              defaultValue={cue.text}
+              onBlur={(event) => {
+                const nextValue = event.target.value.trim();
+                if (nextValue && nextValue !== cue.text) {
+                  updateCaptionCue(project.id, clip.id, cue.id, nextValue);
+                }
+              }}
+            />
           ))}
         </div>
         <div className="rounded-[24px] border border-cyan-300/15 bg-cyan-300/8 p-4">

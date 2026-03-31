@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowUpRight, Clock3, PencilLine, WandSparkles } from "lucide-react";
 
 import { ViralScoreBadge } from "@/components/ViralScoreBadge";
@@ -6,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDuration } from "@/lib/utils";
+import { useClipForgeStore } from "@/store/useClipForgeStore";
 import { ClipCandidate } from "@/types";
 
 export function ClipCard({
@@ -15,6 +19,16 @@ export function ClipCard({
   clip: ClipCandidate;
   projectId: string;
 }) {
+  const router = useRouter();
+  const regenerateClip = useClipForgeStore((state) => state.regenerateClip);
+
+  function handleRegenerate() {
+    const remixed = regenerateClip(projectId, clip.id);
+    if (remixed) {
+      router.push(`/project/${projectId}/clip/${remixed.id}`);
+    }
+  }
+
   return (
     <Card className="overflow-hidden p-0">
       <div
@@ -56,12 +70,12 @@ export function ClipCard({
               Edit
             </Button>
           </Link>
-          <Link href={`/project/${projectId}/export`}>
+          <Link href={`/project/${projectId}/export?clipId=${clip.id}`}>
             <Button variant="outline" size="icon" aria-label="Export clip">
               <ArrowUpRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Button variant="secondary" size="icon" aria-label="Regenerate">
+          <Button variant="secondary" size="icon" aria-label="Regenerate" onClick={handleRegenerate}>
             <WandSparkles className="h-4 w-4" />
           </Button>
         </div>
