@@ -492,22 +492,22 @@ async function renderVideoArtifact(
 ) {
   const preset = PLATFORM_PRESETS[platform];
   const durationSec = Math.max(1, Math.min(clip.durationSec, preset.maxDurationSec));
-  const subtitleFilter = subtitlePath ? `,subtitles='${escapeFilterPath(subtitlePath)}'` : "";
-  const scaleFilter = `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=increase,crop=${preset.width}:${preset.height},fps=${preset.fps}${subtitleFilter}`;
+  const scaleFilterBase = `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=increase,crop=${preset.width}:${preset.height},fps=${preset.fps}`;
+  const scaleFilterWithSubtitles = subtitlePath ? `${scaleFilterBase},subtitles='${escapeFilterPath(subtitlePath)}'` : scaleFilterBase;
   const sourcePath = await resolveStoredAssetPath(asset);
 
   if (sourcePath) {
     try {
       await runFfmpeg([
         "-y",
-        "-ss",
-        clip.startSec.toFixed(2),
         "-i",
         sourcePath,
+        "-ss",
+        clip.startSec.toFixed(2),
         "-t",
         durationSec.toFixed(2),
         "-vf",
-        scaleFilter,
+        scaleFilterWithSubtitles,
         "-map",
         "0:v:0?",
         "-map",
@@ -530,7 +530,41 @@ async function renderVideoArtifact(
       ]);
       return;
     } catch {
-      // Fall back to synthetic export below.
+      try {
+        await runFfmpeg([
+          "-y",
+          "-i",
+          sourcePath,
+          "-ss",
+          clip.startSec.toFixed(2),
+          "-t",
+          durationSec.toFixed(2),
+          "-vf",
+          scaleFilterBase,
+          "-map",
+          "0:v:0?",
+          "-map",
+          "0:a:0?",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "ultrafast",
+          "-pix_fmt",
+          "yuv420p",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "128k",
+          "-ar",
+          "48000",
+          "-movflags",
+          "+faststart",
+          outputPath
+        ]);
+        return;
+      } catch {
+        // Fall back to preview/synthetic export below.
+      }
     }
   }
 
@@ -549,7 +583,7 @@ async function renderVideoArtifact(
         "-t",
         durationSec.toFixed(2),
         "-vf",
-        scaleFilter,
+        scaleFilterWithSubtitles,
         "-shortest",
         "-c:v",
         "libx264",
@@ -567,7 +601,40 @@ async function renderVideoArtifact(
       ]);
       return;
     } catch {
-      // Continue to solid fallback.
+      try {
+        await runFfmpeg([
+          "-y",
+          "-loop",
+          "1",
+          "-i",
+          previewImagePath,
+          "-f",
+          "lavfi",
+          "-i",
+          "anullsrc=channel_layout=stereo:sample_rate=48000",
+          "-t",
+          durationSec.toFixed(2),
+          "-vf",
+          scaleFilterBase,
+          "-shortest",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "ultrafast",
+          "-pix_fmt",
+          "yuv420p",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "128k",
+          "-movflags",
+          "+faststart",
+          outputPath
+        ]);
+        return;
+      } catch {
+        // Continue to solid fallback.
+      }
     }
   }
 
