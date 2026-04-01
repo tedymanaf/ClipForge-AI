@@ -13,15 +13,14 @@ ENV HOME=/home/node \
 WORKDIR $HOME/app
 
 COPY --chown=node:node package.json package-lock.json ./
-
-USER node
-
 RUN npm install --no-audit --no-fund
 
 COPY --chown=node:node . .
 
 RUN npm run build \
   && mkdir -p storage/uploads
+
+USER node
 
 ENV NODE_ENV=production
 
