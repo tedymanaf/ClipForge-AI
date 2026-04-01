@@ -4,23 +4,21 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m -u 1000 user
-
-ENV HOME=/home/user \
-  PATH=/home/user/.local/bin:$PATH \
+ENV HOME=/home/node \
+  PATH=/home/node/.local/bin:$PATH \
   PORT=7860 \
   HOSTNAME=0.0.0.0 \
   NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR $HOME/app
 
-COPY --chown=user:user package.json package-lock.json ./
+COPY --chown=node:node package.json package-lock.json ./
 
-USER user
+USER node
 
 RUN npm ci
 
-COPY --chown=user:user . .
+COPY --chown=node:node . .
 
 RUN npm run build \
   && mkdir -p storage/uploads
