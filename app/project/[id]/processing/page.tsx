@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, LoaderCircle } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import { analyzeProject, getProcessingSnapshot } from "@/modules/analysis/AnalysisEngine";
 import { AppShell } from "@/components/AppShell";
@@ -15,12 +15,36 @@ import { useClipForgeStore } from "@/store/useClipForgeStore";
 import { selectProject } from "@/store/useClipForgeStore";
 
 export default function ProcessingPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const updateProject = useClipForgeStore((state) => state.updateProject);
+  const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
   const initializedProjectRef = useRef<string | null>(null);
+  const timelineSteps = project?.processingSteps?.length ? project.processingSteps : getProcessingSnapshot(8).steps;
+  const heroThumbnail = project?.asset?.thumbnail ?? "";
+  const liveClips = project?.clips ?? [];
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    if (projects.length === 0) {
+      seedDemoProjects();
+      const fallback = useClipForgeStore.getState().projects[0];
+      if (fallback) {
+        router.replace(`/project/${fallback.id}/processing`);
+      }
+      return;
+    }
+
+    if (!project) {
+      router.replace(`/project/${projects[0].id}/processing`);
+    }
+  }, [hydrated, project, projects, router, seedDemoProjects]);
 
   useEffect(() => {
     if (!hydrated || !params.id) {
@@ -86,8 +110,17 @@ export default function ProcessingPage() {
         window.clearInterval(interval);
         const fresh = useClipForgeStore.getState().projects.find((item) => item.id === projectId);
         if (fresh) {
-          const analyzed = await analyzeProject(fresh);
-          updateProject(projectId, () => analyzed);
+          try {
+            const analyzed = await analyzeProject(fresh);
+            updateProject(projectId, () => analyzed);
+          } catch (error) {
+            console.error("Failed to analyze project", error);
+            updateProject(projectId, (item) => ({
+              ...item,
+              status: "error",
+              insight: "Analisis sempat gagal. Kamu tetap bisa kembali ke dashboard atau coba upload lagi."
+            }));
+          }
         }
         initializedProjectRef.current = null;
       }
@@ -110,9 +143,9 @@ export default function ProcessingPage() {
 
   if (!project) {
     return (
-      <AppShell title="Project not found">
+      <AppShell title="Recovering project" eyebrow="Pipeline Status">
         <Card>
-          <p className="text-white/70">The requested project could not be found.</p>
+          <p className="text-white/70">Project lama tidak ditemukan. Mengarahkan ke project yang tersedia...</p>
         </Card>
       </AppShell>
     );
@@ -130,6 +163,10 @@ export default function ProcessingPage() {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
+        ) : project.status === "error" ? (
+          <div className="inline-flex items-center gap-2 rounded-2xl border border-rose-300/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+            {project.insight}
+          </div>
         ) : (
           <div className="inline-flex items-center gap-2 rounded-2xl border border-cyan-300/15 bg-cyan-300/8 px-4 py-3 text-sm text-cyan-100">
             <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -142,27 +179,27 @@ export default function ProcessingPage() {
         <Card className="space-y-4">
           <div
             className="aspect-[16/10] rounded-[28px] border border-white/10 bg-cover bg-center"
-            style={{ backgroundImage: `url("${project.asset.thumbnail}")` }}
+            style={heroThumbnail ? { backgroundImage: `url("${heroThumbnail}")` } : undefined}
           />
           <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
             <p className="text-sm text-white/55">Estimated time remaining</p>
             <p className="mt-2 text-3xl font-semibold text-white">
-              {project.status === "ready" ? "Done" : `${Math.max(1, Math.ceil((100 - project.progress) / 12))} min`}
+              {project.status === "ready" ? "Done" : project.status === "error" ? "Retry" : `${Math.max(1, Math.ceil((100 - project.progress) / 12))} min`}
             </p>
           </div>
         </Card>
 
-        <ProcessingTimeline steps={project.processingSteps.length ? project.processingSteps : getProcessingSnapshot(8).steps} />
+        <ProcessingTimeline steps={timelineSteps} />
       </div>
 
-      {project.clips.length ? (
+      {liveClips.length ? (
         <section className="space-y-4">
           <div>
             <p className="font-medium text-white">Clips arriving live</p>
             <p className="text-sm text-white/55">Top candidates appear as soon as they are ready.</p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
-            {project.clips.slice(0, 3).map((clip) => (
+            {liveClips.slice(0, 3).map((clip) => (
               <ClipCard key={clip.id} clip={clip} projectId={project.id} />
             ))}
           </div>

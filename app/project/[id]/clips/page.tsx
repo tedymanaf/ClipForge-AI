@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 
 import { AnalyticsDashboard } from "@/modules/analytics/AnalyticsDashboard";
 import { AppShell } from "@/components/AppShell";
@@ -12,11 +12,32 @@ import { Input } from "@/components/ui/input";
 import { selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
 
 export default function ClipsPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
+  const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    if (projects.length === 0) {
+      seedDemoProjects();
+      const fallback = useClipForgeStore.getState().projects[0];
+      if (fallback) {
+        router.replace(`/project/${fallback.id}/clips`);
+      }
+      return;
+    }
+
+    if (!project) {
+      router.replace(`/project/${projects[0].id}/clips`);
+    }
+  }, [hydrated, project, projects, router, seedDemoProjects]);
 
   if (!hydrated) {
     return (
@@ -30,9 +51,9 @@ export default function ClipsPage() {
 
   if (!project) {
     return (
-      <AppShell title="Project not found">
+      <AppShell title="Recovering project" eyebrow="Review & Approve">
         <Card>
-          <p className="text-white/70">The requested project could not be found.</p>
+          <p className="text-white/70">Project lama tidak ditemukan. Mengarahkan ke project yang tersedia...</p>
         </Card>
       </AppShell>
     );

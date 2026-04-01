@@ -14,8 +14,8 @@ import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useClipForgeStore } from "@/store/useClipForgeStore";
 import { formatBytes, formatDuration } from "@/lib/utils";
+import { useClipForgeStore } from "@/store/useClipForgeStore";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -45,7 +45,7 @@ export default function DashboardPage() {
         actions={
           <div className="flex gap-3">
             <Badge className="hidden md:inline-flex">Bahasa Indonesia ready</Badge>
-            <Link href="#upload">
+            <Link href="/dashboard#upload">
               <Button className="gap-2">
                 Upload Video
                 <ArrowRight className="h-4 w-4" />
@@ -54,11 +54,11 @@ export default function DashboardPage() {
           </div>
         }
       >
-        <section id="upload">
+        <section id="upload" className="scroll-mt-6">
           <UploadEngine />
         </section>
 
-        <section id="projects" className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <section id="projects" className="grid scroll-mt-6 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <Card className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-white/8 p-3">
@@ -79,7 +79,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="font-medium text-white">{item.name}</p>
                         <p className="text-sm text-white/50">
-                          {formatDuration(item.asset.durationSec)} · {item.asset.width}x{item.asset.height} · {formatBytes(item.asset.sizeBytes)}
+                          {formatDuration(item.asset.durationSec)} / {item.asset.width}x{item.asset.height} / {formatBytes(item.asset.sizeBytes)}
                         </p>
                       </div>
                       <Badge>{item.status}</Badge>
@@ -114,7 +114,7 @@ export default function DashboardPage() {
           </Card>
         </section>
 
-        <section id="library" className="space-y-6">
+        <section id="library" className="scroll-mt-6 space-y-6">
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-cyan-200" />
             <div>
@@ -128,12 +128,12 @@ export default function DashboardPage() {
         </section>
 
         {project ? (
-          <section id="analytics" className="space-y-6">
+          <section id="analytics" className="scroll-mt-6 space-y-6">
             <AnalyticsDashboard project={project} />
           </section>
         ) : null}
 
-        <section id="settings" className="space-y-6">
+        <section id="settings" className="scroll-mt-6 space-y-6">
           <Settings />
         </section>
       </AppShell>

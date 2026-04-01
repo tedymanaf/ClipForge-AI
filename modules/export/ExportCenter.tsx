@@ -7,14 +7,22 @@ import { ExportPackagePreview } from "@/components/ExportPackagePreview";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { buildExportArtifacts } from "@/modules/clipper/ClipGenerator";
-import { ClipCandidate, MetadataBundle } from "@/types";
+import { CaptionCue, CaptionStyleId, ClipCandidate, MetadataBundle, ThumbnailVariant, VideoAsset } from "@/types";
 
 export function ExportCenter({
   clip,
-  metadata
+  metadata,
+  asset,
+  thumbnails,
+  cues,
+  captionStyle
 }: {
   clip: ClipCandidate;
   metadata?: MetadataBundle;
+  asset: VideoAsset;
+  thumbnails: ThumbnailVariant[];
+  cues: CaptionCue[];
+  captionStyle: CaptionStyleId;
 }) {
   const artifacts = buildExportArtifacts(clip);
   const [downloadState, setDownloadState] = useState<"idle" | "working" | "done" | "error">("idle");
@@ -29,7 +37,7 @@ export function ExportCenter({
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ clip, metadata })
+        body: JSON.stringify({ clip, metadata, asset, thumbnails, cues, captionStyle })
       });
 
       if (!response.ok) {
@@ -89,9 +97,9 @@ export function ExportCenter({
         <div className="grid gap-3">
           {[
             "Quality: Standard 1080p",
-            "Formats: MP4 H.264, WebM",
-            "Captions: Burned-in + SRT/VTT",
-            "Thumbnail: Include platform covers",
+            "Formats: MP4 H.264",
+            "Captions: Burned-in MP4 + SRT + VTT",
+            "Thumbnail: JPG platform covers included",
             "Delivery: Download ZIP or publish direct"
           ].map((item) => (
             <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
@@ -129,7 +137,7 @@ export function ExportCenter({
             </div>
             <div>
               <p className="font-medium text-white">Distribution-ready bundle</p>
-              <p className="text-sm text-white/55">Direct connectors are stubbed for TikTok, Instagram, and YouTube API handoff.</p>
+              <p className="text-sm text-white/55">ZIP sekarang berisi MP4 dengan caption nempel, plus JPG, metadata JSON, dan subtitle editable.</p>
             </div>
           </div>
         </Card>

@@ -100,7 +100,7 @@ function makeCaptionCues(transcript: TranscriptSegment[]): CaptionCue[] {
     endMs: segment.endMs,
     text: segment.text,
     activeWordIndex: 1,
-    emojis: ["🔥", "🎬"]
+    emojis: ["HOOK", "CUT"]
   }));
 }
 
@@ -113,6 +113,7 @@ function createClipCandidates(projectId: string, transcript: TranscriptSegment[]
 
   return windows.map((window, index) => {
     const breakdown = createBreakdown(index * 3);
+
     return {
       id: createId("clip"),
       projectId,
@@ -142,8 +143,8 @@ function createClipCandidates(projectId: string, transcript: TranscriptSegment[]
   });
 }
 
-export async function analyzeProject(project: Project): Promise<Project> {
-  const transcript = await transcribeWithWhisperMock(project.asset.name);
+export async function analyzeProject(project: Project, options?: { transcript?: TranscriptSegment[] }): Promise<Project> {
+  const transcript = options?.transcript?.length ? options.transcript : await transcribeWithWhisperMock(project.asset.name);
   const clips = createClipCandidates(project.id, transcript).sort((a, b) => b.viralScore - a.viralScore);
 
   return {

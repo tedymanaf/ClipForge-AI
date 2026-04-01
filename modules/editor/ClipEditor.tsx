@@ -6,7 +6,6 @@ import { CaptionEngine } from "@/modules/captions/CaptionEngine";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { useClipForgeStore } from "@/store/useClipForgeStore";
 import { ClipCandidate, Project } from "@/types";
 import { formatDuration } from "@/lib/utils";
@@ -113,6 +112,7 @@ export function ClipEditor({
           cues={cues}
           selectedStyle={project.settings.captionStyle}
           onSelectStyle={(style) => setProjectCaptionStyle(project.id, style)}
+          onUpdateCue={(cueId, text) => updateCaptionCue(project.id, clip.id, cueId, text)}
         />
       </div>
 
@@ -128,20 +128,8 @@ export function ClipEditor({
             </div>
           ))}
         </div>
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-white">Caption lines</p>
-          {cues.slice(0, 4).map((cue) => (
-            <Textarea
-              key={cue.id}
-              defaultValue={cue.text}
-              onBlur={(event) => {
-                const nextValue = event.target.value.trim();
-                if (nextValue && nextValue !== cue.text) {
-                  updateCaptionCue(project.id, clip.id, cue.id, nextValue);
-                }
-              }}
-            />
-          ))}
+        <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+          Caption editor aktif di panel tengah, dan hasil edit akan ikut masuk ke subtitle serta burned caption saat export.
         </div>
         <div className="rounded-[24px] border border-cyan-300/15 bg-cyan-300/8 p-4">
           <p className="text-sm font-medium text-white">Smart Hook Rewriter</p>

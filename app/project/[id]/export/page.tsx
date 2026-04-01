@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -10,9 +10,11 @@ import { selectClip } from "@/store/useClipForgeStore";
 import { selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
 
 export default function ExportPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
+  const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const clip = useMemo(
@@ -21,9 +23,40 @@ export default function ExportPage() {
   );
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setSelectedClipId(params.get("clipId"));
-  }, []);
+    if (!hydrated) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const nextClipId = searchParams.get("clipId");
+    setSelectedClipId(nextClipId);
+
+    if (projects.length === 0) {
+      seedDemoProjects();
+      const fallbackProject = useClipForgeStore.getState().projects[0];
+      const fallbackClip = fallbackProject?.clips[0];
+      if (fallbackProject && fallbackClip) {
+        router.replace(`/project/${fallbackProject.id}/export?clipId=${fallbackClip.id}`);
+      }
+      return;
+    }
+
+    if (!project) {
+      const fallbackProject = projects[0];
+      const fallbackClip = fallbackProject?.clips[0];
+      if (fallbackProject && fallbackClip) {
+        router.replace(`/project/${fallbackProject.id}/export?clipId=${fallbackClip.id}`);
+      }
+      return;
+    }
+
+    if (nextClipId && !selectClip(project, nextClipId)) {
+      const fallbackClip = project.clips[0];
+      if (fallbackClip) {
+        router.replace(`/project/${project.id}/export?clipId=${fallbackClip.id}`);
+      }
+    }
+  }, [hydrated, project, projects, router, seedDemoProjects]);
 
   if (!hydrated) {
     return (
@@ -37,9 +70,9 @@ export default function ExportPage() {
 
   if (!project || !clip) {
     return (
-      <AppShell title="Nothing to export">
+      <AppShell title="Recovering export" eyebrow="Distribution Center">
         <Card>
-          <p className="text-white/70">Generate or approve a clip first before exporting.</p>
+          <p className="text-white/70">Target export tidak ditemukan. Mengarahkan ke clip yang tersedia...</p>
         </Card>
       </AppShell>
     );
@@ -47,7 +80,14 @@ export default function ExportPage() {
 
   return (
     <AppShell title={`Export ${project.name}`} eyebrow="Distribution Center">
-      <ExportCenter clip={clip} metadata={project.metadata[clip.id]} />
+      <ExportCenter
+        clip={clip}
+        metadata={project.metadata[clip.id]}
+        asset={project.asset}
+        thumbnails={project.thumbnails[clip.id] ?? []}
+        cues={project.captions[clip.id] ?? []}
+        captionStyle={project.settings.captionStyle}
+      />
     </AppShell>
   );
 }

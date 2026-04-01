@@ -5,17 +5,20 @@ import { Sparkles } from "lucide-react";
 import { CAPTION_PRESETS } from "@/lib/demo-data";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CaptionCue, CaptionStyleId } from "@/types";
 
 export function CaptionEngine({
   cues,
   selectedStyle,
-  onSelectStyle
+  onSelectStyle,
+  onUpdateCue
 }: {
   cues: CaptionCue[];
   selectedStyle: CaptionStyleId;
   onSelectStyle?: (style: CaptionStyleId) => void;
+  onUpdateCue?: (cueId: string, text: string) => void;
 }) {
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -37,7 +40,16 @@ export function CaptionEngine({
               <p className="text-xs uppercase tracking-[0.25em] text-white/40">
                 {(cue.startMs / 1000).toFixed(1)}s - {(cue.endMs / 1000).toFixed(1)}s
               </p>
-              <p className="mt-2 text-lg font-semibold text-white">{cue.text}</p>
+              <Textarea
+                className="mt-3 min-h-[88px] text-base font-semibold"
+                defaultValue={cue.text}
+                onBlur={(event) => {
+                  const nextValue = event.target.value.trim();
+                  if (nextValue && nextValue !== cue.text) {
+                    onUpdateCue?.(cue.id, nextValue);
+                  }
+                }}
+              />
               {cue.emojis?.length ? <p className="mt-2 text-sm text-cyan-200">{cue.emojis.join(" ")}</p> : null}
             </div>
           ))}

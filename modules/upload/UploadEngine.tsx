@@ -127,15 +127,25 @@ export function UploadEngine() {
 
   async function bestEffortPersistUpload(descriptor: UploadDescriptor) {
     if (!descriptor.file) {
-      return;
+      return descriptor;
     }
 
     try {
       const formData = new FormData();
       formData.append("file", descriptor.file);
-      await fetch("/api/upload", { method: "POST", body: formData });
+      const response = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!response.ok) {
+        return descriptor;
+      }
+
+      const payload = (await response.json()) as { path?: string };
+      return {
+        ...descriptor,
+        path: payload.path ?? descriptor.path
+      };
     } catch {
       // Local-first flow should remain usable even if the route is unavailable.
+      return descriptor;
     }
   }
 
@@ -154,9 +164,9 @@ export function UploadEngine() {
       await new Promise((resolve) => setTimeout(resolve, 140));
     }
 
-    await bestEffortPersistUpload(descriptor);
+    const persistedDescriptor = await bestEffortPersistUpload(descriptor);
 
-    const project = createProjectFromUpload(descriptor);
+    const project = createProjectFromUpload(persistedDescriptor);
     updateQueueItem(descriptor.id, { progress: 100, status: "queued" });
     setTimeout(() => removeQueueItem(descriptor.id), 1000);
     return project;

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { MouseEvent, ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { BarChart3, Clapperboard, Home, Library, Settings2, UploadCloud } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -38,6 +38,57 @@ export function AppShell({
     return () => window.removeEventListener("hashchange", syncHash);
   }, []);
 
+  useEffect(() => {
+    if (pathname !== "/dashboard" || !hash) {
+      return;
+    }
+
+    let attempts = 0;
+
+    const scrollToHashTarget = () => {
+      const target = document.getElementById(hash.slice(1));
+
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+
+      if (attempts < 12) {
+        attempts += 1;
+        window.setTimeout(scrollToHashTarget, 120);
+      }
+    };
+
+    scrollToHashTarget();
+  }, [hash, pathname]);
+
+  function handleNavigation(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    const [itemPath, itemHash = ""] = href.split("#");
+    const nextHash = itemHash ? `#${itemHash}` : "";
+
+    event.preventDefault();
+
+    if (pathname !== itemPath) {
+      window.location.assign(href);
+      return;
+    }
+
+    if (!itemHash) {
+      window.history.pushState(null, "", itemPath);
+      setHash("");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    window.history.pushState(null, "", href);
+    setHash(nextHash);
+
+    const target = document.getElementById(itemHash);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   return (
     <div className="min-h-screen">
       <div className="mx-auto grid min-h-screen max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[280px_1fr]">
@@ -64,6 +115,7 @@ export function AppShell({
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={(event) => handleNavigation(event, item.href)}
                   className={cn(
                     "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-white/70 transition hover:bg-white/8 hover:text-white",
                     active && "bg-white/10 text-white shadow-glow"

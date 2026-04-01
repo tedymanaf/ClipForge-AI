@@ -1,3 +1,14 @@
+---
+title: ClipForge AI
+emoji: 🎬
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Next.js clipper with captions, exports, and FFmpeg.
+---
+
 # ClipForge AI
 
 ClipForge AI is a modular Next.js 14 application for turning long-form videos into viral-ready short clips.
@@ -59,4 +70,5 @@ Open `http://localhost:3000`.
 - Demo projects are seeded automatically on first launch.
 - The current build includes production-oriented structure with mock-friendly AI and media pipelines.
 - Upload storage writes to `storage/uploads/`.
-- Export ZIP currently contains metadata and caption outputs plus placeholder media artifacts until FFmpeg rendering is wired to real binaries.
+- Export ZIP now renders valid MP4/JPG outputs locally with FFmpeg when available, plus JSON/SRT/VTT metadata files.
+- Publish routes currently return stubbed success payloads and are not connected to real TikTok, Instagram, or YouTube APIs yet.

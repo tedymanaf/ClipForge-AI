@@ -2,11 +2,12 @@ import { ClipCandidate, MetadataBundle } from "@/types";
 
 export function generateMetadataBundle(clip: ClipCandidate): MetadataBundle {
   const base = clip.title;
+
   return {
     clipId: clip.id,
     titles: {
-      tiktok: [`${base} 🤯`, `kenapa bagian ini bikin retention naik`, `creator wajib lihat ini`],
-      instagram: [`${base} #creatorgrowth`, `${base} dan efeknya ke reels`, `ini hook yang bikin orang nonton`],
+      tiktok: [`${base} - must watch`, "kenapa bagian ini bikin retention naik", "creator wajib lihat ini"],
+      instagram: [`${base} #creatorgrowth`, `${base} dan efeknya ke reels`, "ini hook yang bikin orang nonton"],
       youtube: [base, `${base} | Viral Clip Breakdown`, `${base} That Stops Scroll`],
       square: [base, `${base} - social remix`, `${base} - creator cut`]
     },

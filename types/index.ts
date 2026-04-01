@@ -163,6 +163,7 @@ export interface UploadDescriptor {
   id: string;
   name: string;
   file?: File;
+  path?: string;
   url?: string;
   source: UploadSource;
   durationSec: number;

@@ -14,6 +14,17 @@ import {
 import { calculateViralScore } from "@/lib/scoring";
 import { createId, svgToDataUri } from "@/lib/utils";
 
+function toStableToken(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function createStableId(prefix: string, value: string) {
+  return `${prefix}_${toStableToken(value)}`;
+}
+
 export const CAPTION_PRESETS: CaptionPreset[] = [
   { id: "bold-fire", name: "Bold Fire", description: "Big caption blocks with active word highlight." },
   { id: "neon-pop", name: "Neon Pop", description: "Glowy cyan karaoke captions for high-energy hooks." },
@@ -115,7 +126,7 @@ function createCaptions(segments: TranscriptSegment[]): CaptionCue[] {
     endMs: segment.endMs,
     text: segment.text,
     activeWordIndex: 1,
-    emojis: ["🔥", "🎯"]
+    emojis: ["HOOK", "WOW"]
   }));
 }
 
@@ -123,7 +134,7 @@ function createMetadata(clipId: string, title: string, sentiment: "positive" | "
   return {
     clipId,
     titles: {
-      tiktok: [`${title} 🤯`, `${title} tapi versi singkat`, `alasan clip ini bisa meledak`],
+      tiktok: [`${title} - must watch`, `${title} tapi versi singkat`, "alasan clip ini bisa meledak"],
       instagram: [`${title} #creatorgrowth`, `${title} dan kenapa retention itu penting`, `${title} untuk reels`],
       youtube: [title, `${title} | Short Creator Strategy`, `${title} That Changes Retention`],
       square: [title, `${title} - Social Cut`, `${title} Quick Clip`]
@@ -180,9 +191,10 @@ function createClip(projectId: string, index: number, tone: "violet" | "cyan" | 
   ][index];
   const transcript = createTranscript(projectName).slice(0, 3);
   const poster = createPoster(title, "AI-selected viral moment", tone);
+  const clipId = createStableId("clip", `${projectName}-${index + 1}`);
 
   return {
-    id: createId("clip"),
+    id: clipId,
     projectId,
     title,
     description: "AI-picked moment with strong hook density, quotability, and creator value.",
@@ -207,7 +219,7 @@ function createClip(projectId: string, index: number, tone: "violet" | "cyan" | 
 }
 
 export function createDemoProject(projectName: string, tone: "violet" | "cyan" | "emerald" = "violet"): Project {
-  const projectId = createId("project");
+  const projectId = createStableId("project", projectName);
   const poster = createPoster(projectName, "Podcast to viral shorts pipeline", tone);
   const transcript = createTranscript(projectName);
   const clips = [
@@ -223,7 +235,7 @@ export function createDemoProject(projectName: string, tone: "violet" | "cyan" |
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     asset: {
-      id: createId("asset"),
+      id: createStableId("asset", projectName),
       name: `${projectName}.mp4`,
       source: "demo",
       durationSec: 634,
