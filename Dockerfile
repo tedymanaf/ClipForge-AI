@@ -4,23 +4,29 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+RUN useradd -m -u 1000 user
 
-ENV PORT=7860
-ENV HOSTNAME=0.0.0.0
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOME=/home/user \
+  PATH=/home/user/.local/bin:$PATH \
+  PORT=7860 \
+  HOSTNAME=0.0.0.0 \
+  NEXT_TELEMETRY_DISABLED=1
 
-COPY package.json package-lock.json ./
-RUN npm install
+WORKDIR $HOME/app
 
-COPY . .
+COPY --chown=user:user package.json package-lock.json ./
 
-RUN npm run build
+USER user
 
-RUN mkdir -p storage/uploads
+RUN npm ci
+
+COPY --chown=user:user . .
+
+RUN npm run build \
+  && mkdir -p storage/uploads
 
 ENV NODE_ENV=production
 
 EXPOSE 7860
 
-CMD ["npm", "run", "start", "--", "-H", "0.0.0.0", "-p", "7860"]
+CMD ["sh", "-lc", "npm run start -- -H 0.0.0.0 -p ${PORT:-7860}"]
