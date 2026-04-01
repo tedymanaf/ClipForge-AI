@@ -16,7 +16,7 @@ COPY --chown=node:node package.json package-lock.json ./
 
 USER node
 
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 COPY --chown=node:node . .
 
