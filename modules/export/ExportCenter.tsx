@@ -28,10 +28,12 @@ export function ExportCenter({
   const [downloadState, setDownloadState] = useState<"idle" | "working" | "done" | "error">("idle");
   const [publishState, setPublishState] = useState<"idle" | "working" | "done" | "error">("idle");
   const [publishSummary, setPublishSummary] = useState<string>("Ready to prepare TikTok, Reels, and Shorts publishing payloads.");
+  const [downloadMessage, setDownloadMessage] = useState<string>("ZIP export will include platform MP4s, thumbnails, metadata, and editable captions.");
 
   async function handleDownload() {
     try {
       setDownloadState("working");
+      setDownloadMessage("Preparing export bundle...");
       const response = await fetch("/api/export", {
         method: "POST",
         headers: {
@@ -41,7 +43,8 @@ export function ExportCenter({
       });
 
       if (!response.ok) {
-        throw new Error("Export request failed.");
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error || "Export request failed.");
       }
 
       const blob = await response.blob();
@@ -54,8 +57,10 @@ export function ExportCenter({
       anchor.remove();
       window.URL.revokeObjectURL(url);
       setDownloadState("done");
-    } catch {
+      setDownloadMessage("ZIP export ready. Check your Downloads folder.");
+    } catch (error) {
       setDownloadState("error");
+      setDownloadMessage(error instanceof Error ? error.message : "Export failed. Please retry.");
     }
   }
 
@@ -120,10 +125,14 @@ export function ExportCenter({
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
           {downloadState === "error"
-            ? "Export failed. Please retry."
+            ? downloadMessage
+            : downloadState === "done"
+              ? downloadMessage
+              : downloadState === "working"
+                ? downloadMessage
             : publishState === "error"
               ? publishSummary
-              : publishSummary}
+              : downloadMessage}
         </div>
       </Card>
 

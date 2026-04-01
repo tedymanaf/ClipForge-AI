@@ -495,6 +495,11 @@ async function renderVideoArtifact(
   const scaleFilterBase = `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=increase,crop=${preset.width}:${preset.height},fps=${preset.fps}`;
   const scaleFilterWithSubtitles = subtitlePath ? `${scaleFilterBase},subtitles='${escapeFilterPath(subtitlePath)}'` : scaleFilterBase;
   const sourcePath = await resolveStoredAssetPath(asset);
+  const requiresOriginalSource = asset?.source === "file";
+
+  if (requiresOriginalSource && !sourcePath) {
+    throw new Error("Source video tidak ditemukan di server. Upload ulang video lalu coba export lagi.");
+  }
 
   if (sourcePath) {
     try {
@@ -563,7 +568,9 @@ async function renderVideoArtifact(
         ]);
         return;
       } catch {
-        // Fall back to preview/synthetic export below.
+        if (requiresOriginalSource) {
+          throw new Error("Clip gagal dirender dari video asli. Coba upload ulang video atau pilih clip lain.");
+        }
       }
     }
   }
@@ -598,10 +605,10 @@ async function renderVideoArtifact(
         "-movflags",
         "+faststart",
         outputPath
-      ]);
-      return;
-    } catch {
-      try {
+        ]);
+        return;
+      } catch {
+        try {
         await runFfmpeg([
           "-y",
           "-loop",
@@ -633,14 +640,24 @@ async function renderVideoArtifact(
         ]);
         return;
       } catch {
-        // Continue to solid fallback.
+        if (requiresOriginalSource) {
+          throw new Error("Preview fallback tidak bisa dipakai untuk export video asli. Upload ulang video lalu coba lagi.");
+        }
       }
     }
   }
 
   if (!subtitlePath) {
+    if (requiresOriginalSource) {
+      throw new Error("Video asli tidak tersedia untuk export. Upload ulang video lalu coba lagi.");
+    }
+
     await createSolidVideo(outputPath, preset.width, preset.height, preset.fps, durationSec);
     return;
+  }
+
+  if (requiresOriginalSource) {
+    throw new Error("Subtitle fallback tidak cukup untuk export video upload. Upload ulang video lalu coba lagi.");
   }
 
   const baseVideoPath = `${outputPath}.base.mp4`;
