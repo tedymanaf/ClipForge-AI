@@ -5,14 +5,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, Clock3, Download, Loader2, PencilLine, Play, WandSparkles, X } from "lucide-react";
 
-import { buildAssetMediaUrl, createDownloadFileName } from "@/lib/media";
+import { createDownloadFileName } from "@/lib/media";
 import { ViralScoreBadge } from "@/components/ViralScoreBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDuration } from "@/lib/utils";
 import { useClipForgeStore } from "@/store/useClipForgeStore";
-import { ClipCandidate, Project } from "@/types";
+import { ClipCandidate, Platform, Project } from "@/types";
+
+const platformLabels: Record<Platform, string> = {
+  tiktok: "TikTok 9:16",
+  instagram: "Reels 9:16",
+  youtube: "Shorts 9:16",
+  square: "Square 1:1"
+};
 
 export function ClipCard({
   clip,
@@ -25,52 +32,32 @@ export function ClipCard({
   const regenerateClip = useClipForgeStore((state) => state.regenerateClip);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const projectId = project.id;
-  const mediaUrl = useMemo(() => buildAssetMediaUrl(project.asset), [project.asset]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewState, setPreviewState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewMessage, setPreviewMessage] = useState("Preview short sedang disiapkan.");
   const [downloadState, setDownloadState] = useState<"idle" | "working" | "done" | "error">("idle");
-  const [actionMessage, setActionMessage] = useState("Preview dari footage asli dan unduh ZIP clip langsung dari kartu ini.");
+  const defaultPreviewPlatform = useMemo<Platform>(
+    () => (clip.platforms.includes("youtube") ? "youtube" : clip.platforms[0] ?? "tiktok"),
+    [clip.platforms]
+  );
+  const [selectedPreviewPlatform, setSelectedPreviewPlatform] = useState<Platform>(defaultPreviewPlatform);
+  const [actionMessage, setActionMessage] = useState("Play akan membuka preview vertikal 9:16, dan Download akan mengunduh bundle clip.");
   const [messageTone, setMessageTone] = useState<"neutral" | "success" | "error">("neutral");
 
   useEffect(() => {
-    if (!isPreviewOpen || !mediaUrl) {
+    if (!previewUrl) {
       return;
     }
-
-    const video = videoRef.current;
-    if (!video) {
-      return;
-    }
-
-    const startAt = Math.max(0, clip.startSec);
-    const stopAt = Math.max(startAt + 0.25, clip.endSec);
-
-    const handleLoadedMetadata = () => {
-      video.currentTime = startAt;
-      void video.play().catch(() => {
-        // Ignore autoplay rejection and let the user start playback manually.
-      });
-    };
-
-    const handleTimeUpdate = () => {
-      if (video.currentTime >= stopAt) {
-        video.pause();
-        video.currentTime = startAt;
-      }
-    };
-
-    if (video.readyState >= 1) {
-      handleLoadedMetadata();
-    }
-
-    video.addEventListener("loadedmetadata", handleLoadedMetadata);
-    video.addEventListener("timeupdate", handleTimeUpdate);
 
     return () => {
-      video.pause();
-      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      video.removeEventListener("timeupdate", handleTimeUpdate);
+      window.URL.revokeObjectURL(previewUrl);
     };
-  }, [clip.endSec, clip.startSec, isPreviewOpen, mediaUrl]);
+  }, [previewUrl]);
+
+  useEffect(() => {
+    setSelectedPreviewPlatform(defaultPreviewPlatform);
+  }, [defaultPreviewPlatform]);
 
   function handleRegenerate() {
     const remixed = regenerateClip(projectId, clip.id);
@@ -80,15 +67,104 @@ export function ClipCard({
   }
 
   function handlePlayPreview() {
-    if (!mediaUrl) {
-      setMessageTone("error");
-      setActionMessage("Video sumber belum tersedia di server, jadi preview belum bisa diputar.");
+    setMessageTone("neutral");
+    setActionMessage(`Preview akan diputar sebagai ${platformLabels[selectedPreviewPlatform]}.`);
+    setIsPreviewOpen(true);
+  }
+
+  useEffect(() => {
+    if (!isPreviewOpen) {
       return;
     }
 
-    setMessageTone("neutral");
-    setActionMessage(`Preview akan memutar potongan ${formatDuration(clip.durationSec)} dari footage asli.`);
-    setIsPreviewOpen(true);
+    let cancelled = false;
+
+    const runPreviewLoad = async () => {
+      try {
+        setPreviewState("loading");
+        setPreviewMessage(`Menyiapkan preview ${platformLabels[selectedPreviewPlatform]}...`);
+
+        const response = await fetch("/api/preview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            clip,
+            asset: project.asset,
+            platform: selectedPreviewPlatform
+          })
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(payload.error || "Preview clip gagal disiapkan.");
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        if (cancelled) {
+          window.URL.revokeObjectURL(url);
+          return;
+        }
+
+        setPreviewUrl((currentUrl) => {
+          if (currentUrl) {
+            window.URL.revokeObjectURL(currentUrl);
+          }
+          return url;
+        });
+        setPreviewState("ready");
+        setPreviewMessage(`Preview ${platformLabels[selectedPreviewPlatform]} siap diputar.`);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setPreviewState("error");
+        setPreviewMessage(error instanceof Error ? error.message : "Preview clip gagal disiapkan.");
+      }
+    };
+
+    void runPreviewLoad();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clip, isPreviewOpen, project.asset, selectedPreviewPlatform]);
+
+  useEffect(() => {
+    if (!isPreviewOpen || previewState !== "ready" || !previewUrl) {
+      return;
+    }
+
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+
+    const handleLoadedData = () => {
+      void video.play().catch(() => {
+        // Ignore autoplay rejection and let the user press play manually.
+      });
+    };
+
+    if (video.readyState >= 2) {
+      handleLoadedData();
+    }
+
+    video.addEventListener("loadeddata", handleLoadedData);
+    return () => {
+      video.pause();
+      video.removeEventListener("loadeddata", handleLoadedData);
+    };
+  }, [isPreviewOpen, previewState, previewUrl]);
+
+  function handleClosePreview() {
+    setIsPreviewOpen(false);
+    setPreviewState("idle");
+    setPreviewMessage("Preview short sedang disiapkan.");
   }
 
   async function handleDownload() {
@@ -153,7 +229,7 @@ export function ClipCard({
     <>
       <Card className="flex h-full flex-col overflow-hidden p-0">
         <div
-          className="relative aspect-[9/14] w-full overflow-hidden rounded-t-[28px] border-b border-white/10 bg-slate-950 bg-cover bg-center"
+          className="relative aspect-[9/16] w-full overflow-hidden rounded-t-[28px] border-b border-white/10 bg-slate-950 bg-cover bg-center"
           style={clip.previewImage ? { backgroundImage: `url("${clip.previewImage}")` } : undefined}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
@@ -170,7 +246,6 @@ export function ClipCard({
               onClick={handlePlayPreview}
               className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white shadow-[0_10px_45px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:scale-[1.03] hover:bg-black/60 disabled:cursor-not-allowed disabled:opacity-45"
               aria-label="Putar preview clip"
-              disabled={!mediaUrl}
             >
               <Play className="ml-1 h-5 w-5" />
             </button>
@@ -210,7 +285,7 @@ export function ClipCard({
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="secondary" className="w-full justify-center gap-2" onClick={handlePlayPreview} disabled={!mediaUrl}>
+              <Button variant="secondary" className="w-full justify-center gap-2" onClick={handlePlayPreview}>
                 <Play className="h-4 w-4" />
                 Play
               </Button>
@@ -253,7 +328,7 @@ export function ClipCard({
           <div className="relative w-full max-w-4xl overflow-hidden rounded-[32px] border border-white/10 bg-[#0b1017] shadow-[0_32px_120px_rgba(0,0,0,0.6)]">
             <button
               type="button"
-              onClick={() => setIsPreviewOpen(false)}
+              onClick={handleClosePreview}
               className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/70 transition hover:bg-black/60 hover:text-white"
               aria-label="Tutup preview clip"
             >
@@ -262,19 +337,31 @@ export function ClipCard({
 
             <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="bg-black">
-                {mediaUrl ? (
+                {previewState === "ready" && previewUrl ? (
                   <video
                     ref={videoRef}
-                    src={mediaUrl}
+                    src={previewUrl}
                     poster={clip.previewImage}
                     controls
+                    loop
                     playsInline
-                    preload="metadata"
+                    preload="auto"
                     className="aspect-[9/16] w-full bg-black object-contain"
                   />
+                ) : previewState === "loading" ? (
+                  <div className="flex aspect-[9/16] items-center justify-center p-6 text-center text-sm text-white/70">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="h-6 w-6 animate-spin text-cyan-200" />
+                      <p>{previewMessage}</p>
+                    </div>
+                  </div>
+                ) : previewState === "error" ? (
+                  <div className="flex aspect-[9/16] items-center justify-center p-6 text-center text-sm text-rose-100">
+                    {previewMessage}
+                  </div>
                 ) : (
                   <div className="flex aspect-[9/16] items-center justify-center p-6 text-center text-sm text-white/60">
-                    Video sumber belum tersedia untuk diputar.
+                    Preview sedang disiapkan.
                   </div>
                 )}
               </div>
@@ -284,6 +371,23 @@ export function ClipCard({
                   <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/70">Clip Preview</p>
                   <h3 className="mt-2 text-2xl font-semibold text-white">{clip.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-white/60">{clip.description}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {clip.platforms.map((platform) => (
+                    <button
+                      key={platform}
+                      type="button"
+                      onClick={() => setSelectedPreviewPlatform(platform)}
+                      className={`rounded-full border px-3 py-2 text-sm transition ${
+                        selectedPreviewPlatform === platform
+                          ? "border-cyan-300/30 bg-cyan-300/12 text-cyan-100"
+                          : "border-white/10 bg-white/5 text-white/65 hover:bg-white/10"
+                      }`}
+                    >
+                      {platformLabels[platform]}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -299,6 +403,10 @@ export function ClipCard({
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-white/65">
                   {clip.hookLine}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/65">
+                  {previewState === "error" ? previewMessage : `Mode preview aktif: ${platformLabels[selectedPreviewPlatform]}.`}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
