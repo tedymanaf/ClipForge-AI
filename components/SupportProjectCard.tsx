@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { HeartHandshake, QrCode, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { SUPPORT_QRIS_DATA_URI } from "@/lib/support-qris";
+import { SUPPORT_QRIS_IMAGE_SRC } from "@/lib/support-qris";
 
 export function SupportProjectCard() {
   const [open, setOpen] = useState(false);
@@ -51,7 +52,7 @@ export function SupportProjectCard() {
                   <QrCode className="h-4 w-4" />
                   Buka QRIS Dukungan
                 </Button>
-                <a href={SUPPORT_QRIS_DATA_URI} target="_blank" rel="noreferrer">
+                <a href={SUPPORT_QRIS_IMAGE_SRC} target="_blank" rel="noreferrer">
                   <Button size="lg" variant="outline" className="gap-2">
                     <Sparkles className="h-4 w-4" />
                     Lihat Full Image
@@ -81,10 +82,12 @@ export function SupportProjectCard() {
                     className="group block w-full rounded-[26px] border border-white/10 bg-white p-3 text-left transition hover:scale-[1.01] hover:shadow-[0_22px_80px_rgba(34,211,238,0.12)]"
                   >
                     <div className="relative aspect-[4/5] overflow-hidden rounded-[20px] bg-slate-100">
-                      <img
-                        src={SUPPORT_QRIS_DATA_URI}
+                      <Image
+                        src={SUPPORT_QRIS_IMAGE_SRC}
                         alt="QRIS Zens Store untuk dukungan project"
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                        fill
+                        unoptimized
+                        className="object-cover transition duration-300 group-hover:scale-[1.02]"
                       />
                     </div>
                   </button>
@@ -121,16 +124,18 @@ export function SupportProjectCard() {
 
             <div className="rounded-[28px] border border-white/10 bg-white p-3">
               <div className="relative aspect-[4/5] overflow-hidden rounded-[20px]">
-                <img
-                  src={SUPPORT_QRIS_DATA_URI}
+                <Image
+                  src={SUPPORT_QRIS_IMAGE_SRC}
                   alt="QRIS Zens Store full preview"
-                  className="h-full w-full object-contain"
+                  fill
+                  unoptimized
+                  className="object-contain"
                 />
               </div>
             </div>
 
             <div className="mt-5 flex flex-wrap gap-3">
-              <a href={SUPPORT_QRIS_DATA_URI} target="_blank" rel="noreferrer">
+              <a href={SUPPORT_QRIS_IMAGE_SRC} target="_blank" rel="noreferrer">
                 <Button className="gap-2">Buka Gambar Penuh</Button>
               </a>
               <Button variant="outline" onClick={() => setOpen(false)}>
