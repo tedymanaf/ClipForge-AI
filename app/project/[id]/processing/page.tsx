@@ -201,7 +201,7 @@ export default function ProcessingPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
             {liveClips.slice(0, 3).map((clip) => (
-              <ClipCard key={clip.id} clip={clip} projectId={project.id} />
+              <ClipCard key={clip.id} clip={clip} project={project} />
             ))}
           </div>
         </section>

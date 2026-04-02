@@ -318,7 +318,7 @@ export default function DashboardPage() {
 
           {project ? (
             <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
-              {project.clips.map((clip) => <ClipCard key={clip.id} clip={clip} projectId={project.id} />)}
+              {project.clips.map((clip) => <ClipCard key={clip.id} clip={clip} project={project} />)}
             </div>
           ) : (
             <Card>
