@@ -24,6 +24,8 @@ type ParsedDataUri = {
   extension: string;
 };
 
+type PreviewRenderMode = "source" | "poster" | "solid";
+
 function sanitizeBaseName(value: string) {
   const sanitized = value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return sanitized || "clipforge_preview";
@@ -215,7 +217,7 @@ async function renderPreviewArtifact(
   asset: VideoAsset | undefined,
   previewImagePath: string | null,
   platform: Platform
-) {
+): Promise<PreviewRenderMode> {
   const preset = PLATFORM_PRESETS[platform];
   const durationSec = Math.max(1, Math.min(clip.durationSec, preset.maxDurationSec));
   const scaleFilter = `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=increase,crop=${preset.width}:${preset.height},fps=${preset.fps}`;
@@ -253,7 +255,7 @@ async function renderPreviewArtifact(
         "+faststart",
         outputPath
       ]);
-      return;
+      return "source";
     } catch {
       // Continue to preview-image fallback.
     }
@@ -261,6 +263,12 @@ async function renderPreviewArtifact(
 
   if (previewImagePath) {
     try {
+      const animatedPosterFilter = [
+        `scale=${Math.round(preset.width * 1.14)}:${Math.round(preset.height * 1.14)}`,
+        `crop=${preset.width}:${preset.height}:(in_w-out_w)/2+sin(n/24)*26:(in_h-out_h)/2+cos(n/30)*34`,
+        `fps=${preset.fps}`
+      ].join(",");
+
       await runFfmpeg([
         "-y",
         "-loop",
@@ -274,7 +282,7 @@ async function renderPreviewArtifact(
         "-t",
         durationSec.toFixed(2),
         "-vf",
-        scaleFilter,
+        animatedPosterFilter,
         "-shortest",
         "-c:v",
         "libx264",
@@ -290,13 +298,14 @@ async function renderPreviewArtifact(
         "+faststart",
         outputPath
       ]);
-      return;
+      return "poster";
     } catch {
       // Continue to solid fallback.
     }
   }
 
   await createSolidVideo(outputPath, preset.width, preset.height, preset.fps, durationSec);
+  return "solid";
 }
 
 export async function POST(request: Request) {
@@ -310,7 +319,7 @@ export async function POST(request: Request) {
     const outputPath = join(tempDir, `${baseName}.mp4`);
     const previewImagePath = await writeDataUriToTempFile(clip.previewImage, tempDir, `${baseName}-preview`);
 
-    await renderPreviewArtifact(outputPath, clip, body.asset, previewImagePath, platform);
+    const renderMode = await renderPreviewArtifact(outputPath, clip, body.asset, previewImagePath, platform);
 
     const buffer = await readFile(outputPath);
     return new NextResponse(buffer, {
@@ -318,7 +327,8 @@ export async function POST(request: Request) {
         "Content-Type": "video/mp4",
         "Content-Disposition": `inline; filename="${basename(outputPath)}"`,
         "Cache-Control": "no-store",
-        "X-ClipForge-Preview-Platform": platform
+        "X-ClipForge-Preview-Platform": platform,
+        "X-ClipForge-Preview-Mode": renderMode
       }
     });
   } catch (error) {

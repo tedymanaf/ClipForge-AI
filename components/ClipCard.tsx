@@ -35,6 +35,7 @@ export function ClipCard({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewState, setPreviewState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<"source" | "poster" | "solid" | null>(null);
   const [previewMessage, setPreviewMessage] = useState("Preview short sedang disiapkan.");
   const [downloadState, setDownloadState] = useState<"idle" | "working" | "done" | "error">("idle");
   const defaultPreviewPlatform = useMemo<Platform>(
@@ -68,7 +69,7 @@ export function ClipCard({
 
   function handlePlayPreview() {
     setMessageTone("neutral");
-    setActionMessage(`Preview akan diputar sebagai ${platformLabels[selectedPreviewPlatform]}.`);
+    setActionMessage(`Preview akan dibuka sebagai ${platformLabels[selectedPreviewPlatform]}.`);
     setIsPreviewOpen(true);
   }
 
@@ -103,6 +104,11 @@ export function ClipCard({
 
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
+        const modeHeader = response.headers.get("X-ClipForge-Preview-Mode");
+        const nextPreviewMode =
+          modeHeader === "source" || modeHeader === "poster" || modeHeader === "solid"
+            ? modeHeader
+            : null;
 
         if (cancelled) {
           window.URL.revokeObjectURL(url);
@@ -115,13 +121,28 @@ export function ClipCard({
           }
           return url;
         });
+        setPreviewMode(nextPreviewMode);
         setPreviewState("ready");
-        setPreviewMessage(`Preview ${platformLabels[selectedPreviewPlatform]} siap diputar.`);
+        setActionMessage(
+          nextPreviewMode === "source"
+            ? `Preview ${platformLabels[selectedPreviewPlatform]} memakai footage asli.`
+            : nextPreviewMode === "poster"
+              ? `Preview ${platformLabels[selectedPreviewPlatform]} memakai poster animasi karena footage asli belum tersedia di server.`
+              : `Preview ${platformLabels[selectedPreviewPlatform]} memakai fallback canvas karena footage asli belum tersedia di server.`
+        );
+        setPreviewMessage(
+          nextPreviewMode === "source"
+            ? `Preview ${platformLabels[selectedPreviewPlatform]} siap diputar dari footage asli.`
+            : nextPreviewMode === "poster"
+              ? `Preview ${platformLabels[selectedPreviewPlatform]} memakai poster animasi karena footage asli tidak tersedia di server.`
+              : `Preview ${platformLabels[selectedPreviewPlatform]} memakai fallback canvas karena footage asli tidak tersedia di server.`
+        );
       } catch (error) {
         if (cancelled) {
           return;
         }
 
+        setPreviewMode(null);
         setPreviewState("error");
         setPreviewMessage(error instanceof Error ? error.message : "Preview clip gagal disiapkan.");
       }
@@ -164,6 +185,7 @@ export function ClipCard({
   function handleClosePreview() {
     setIsPreviewOpen(false);
     setPreviewState("idle");
+    setPreviewMode(null);
     setPreviewMessage("Preview short sedang disiapkan.");
   }
 
@@ -406,7 +428,15 @@ export function ClipCard({
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/65">
-                  {previewState === "error" ? previewMessage : `Mode preview aktif: ${platformLabels[selectedPreviewPlatform]}.`}
+                  {previewState === "error"
+                    ? previewMessage
+                    : previewMode === "source"
+                      ? `Mode preview aktif: ${platformLabels[selectedPreviewPlatform]} dari footage asli.`
+                      : previewMode === "poster"
+                        ? `Mode preview aktif: ${platformLabels[selectedPreviewPlatform]} dengan poster animasi.`
+                        : previewMode === "solid"
+                          ? `Mode preview aktif: ${platformLabels[selectedPreviewPlatform]} dengan fallback canvas.`
+                          : `Mode preview aktif: ${platformLabels[selectedPreviewPlatform]}.`}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
