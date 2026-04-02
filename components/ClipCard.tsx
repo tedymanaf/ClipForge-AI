@@ -29,12 +29,20 @@ export function ClipCard({
     }
   }
 
+  const lineClampTwo = {
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical" as const,
+    overflow: "hidden"
+  };
+
   return (
-    <Card className="overflow-hidden p-0">
+    <Card className="flex h-full flex-col overflow-hidden p-0">
       <div
-        className="relative aspect-[9/14] w-full overflow-hidden rounded-t-[28px] border-b border-white/10 bg-cover bg-center"
-        style={{ backgroundImage: `url("${clip.previewImage}")` }}
+        className="relative aspect-[9/14] w-full overflow-hidden rounded-t-[28px] border-b border-white/10 bg-slate-950 bg-cover bg-center"
+        style={clip.previewImage ? { backgroundImage: `url("${clip.previewImage}")` } : undefined}
       >
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
         <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
           <ViralScoreBadge score={clip.viralScore} />
           <Badge className="gap-2 bg-black/35 text-white/80">
@@ -42,28 +50,28 @@ export function ClipCard({
             {formatDuration(clip.durationSec)}
           </Badge>
         </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent p-4">
-          <p className="text-sm font-medium text-white/90">{clip.title}</p>
-          <p className="mt-2 text-xs text-white/65">{clip.hookLine}</p>
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <p className="text-base font-semibold text-white/95">{clip.title}</p>
+          <p className="mt-2 text-xs leading-5 text-white/70" style={lineClampTwo}>{clip.hookLine}</p>
         </div>
       </div>
 
-      <div className="space-y-4 p-5">
+      <div className="flex flex-1 flex-col space-y-4 p-5">
         <div className="flex flex-wrap gap-2">
           {clip.platforms.map((platform) => (
-            <Badge key={platform}>{platform}</Badge>
+            <Badge key={platform} className="capitalize">{platform}</Badge>
           ))}
         </div>
 
         <div className="space-y-2">
           {clip.whyItWorks.slice(0, 2).map((item) => (
-            <p key={item} className="text-sm text-white/65">
+            <p key={item} className="text-sm leading-6 text-white/65" style={lineClampTwo}>
               {item}
             </p>
           ))}
         </div>
 
-        <div className="flex gap-2">
+        <div className="mt-auto flex gap-2">
           <Link href={`/project/${projectId}/clip/${clip.id}`} className="flex-1">
             <Button className="w-full justify-center gap-2">
               <PencilLine className="h-4 w-4" />

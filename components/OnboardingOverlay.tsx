@@ -7,11 +7,11 @@ import { Card } from "@/components/ui/card";
 import { useClipForgeStore } from "@/store/useClipForgeStore";
 
 const steps = [
-  "Upload or paste a long-form source.",
-  "Review AI-ranked clips with virality explainers.",
-  "Fine-tune captions, thumbnails, and export bundles.",
-  "Compare TikTok, Reels, and Shorts previews side by side.",
-  "Ship a full package or queue direct publishing."
+  "Upload atau tempel sumber video panjang.",
+  "Tinjau clip yang sudah diurutkan AI beserta penjelasan virality-nya.",
+  "Rapikan caption, thumbnail, dan bundle export sesuai kebutuhan.",
+  "Bandingkan preview TikTok, Reels, dan Shorts secara berdampingan.",
+  "Kirim paket lengkap atau masukkan ke antrean publish langsung."
 ];
 
 export function OnboardingOverlay() {
@@ -33,8 +33,8 @@ export function OnboardingOverlay() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-xl">
       <Card className="w-full max-w-2xl">
-        <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/80">5-step onboarding</p>
-        <h2 className="mt-3 text-3xl font-semibold text-white">ClipForge AI walkthrough</h2>
+        <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/80">Onboarding 5 Langkah</p>
+        <h2 className="mt-3 text-3xl font-semibold text-white">Panduan singkat ClipForge AI</h2>
         <div className="mt-6 space-y-3">
           {steps.map((step, index) => (
             <div key={step} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white/75">
@@ -44,7 +44,7 @@ export function OnboardingOverlay() {
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="ghost" onClick={() => setOpen(false)}>
-            Close
+            Tutup
           </Button>
           <Button
             onClick={() => {
@@ -52,7 +52,7 @@ export function OnboardingOverlay() {
               setOpen(false);
             }}
           >
-            Start clipping
+            Mulai kliping
           </Button>
         </div>
       </Card>

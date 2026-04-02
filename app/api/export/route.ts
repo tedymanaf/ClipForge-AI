@@ -28,6 +28,8 @@ type ParsedDataUri = {
   extension: string;
 };
 
+type VideoRenderMode = "source" | "preview" | "solid";
+
 function sanitizeBaseName(value: string) {
   const sanitized = value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return sanitized || "clipforge_export";
@@ -489,17 +491,12 @@ async function renderVideoArtifact(
   previewImagePath: string | null,
   platform: keyof typeof PLATFORM_PRESETS,
   subtitlePath: string | null
-) {
+): Promise<VideoRenderMode> {
   const preset = PLATFORM_PRESETS[platform];
   const durationSec = Math.max(1, Math.min(clip.durationSec, preset.maxDurationSec));
   const scaleFilterBase = `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=increase,crop=${preset.width}:${preset.height},fps=${preset.fps}`;
   const scaleFilterWithSubtitles = subtitlePath ? `${scaleFilterBase},subtitles='${escapeFilterPath(subtitlePath)}'` : scaleFilterBase;
   const sourcePath = await resolveStoredAssetPath(asset);
-  const requiresOriginalSource = asset?.source === "file";
-
-  if (requiresOriginalSource && !sourcePath) {
-    throw new Error("Source video tidak ditemukan di server. Upload ulang video lalu coba export lagi.");
-  }
 
   if (sourcePath) {
     try {
@@ -533,7 +530,7 @@ async function renderVideoArtifact(
         "+faststart",
         outputPath
       ]);
-      return;
+      return "source";
     } catch {
       try {
         await runFfmpeg([
@@ -566,11 +563,9 @@ async function renderVideoArtifact(
           "+faststart",
           outputPath
         ]);
-        return;
+        return "source";
       } catch {
-        if (requiresOriginalSource) {
-          throw new Error("Clip gagal dirender dari video asli. Coba upload ulang video atau pilih clip lain.");
-        }
+        // Continue to preview/solid fallback rendering.
       }
     }
   }
@@ -606,7 +601,7 @@ async function renderVideoArtifact(
         "+faststart",
         outputPath
         ]);
-        return;
+        return "preview";
       } catch {
         try {
         await runFfmpeg([
@@ -638,31 +633,22 @@ async function renderVideoArtifact(
           "+faststart",
           outputPath
         ]);
-        return;
+        return "preview";
       } catch {
-        if (requiresOriginalSource) {
-          throw new Error("Preview fallback tidak bisa dipakai untuk export video asli. Upload ulang video lalu coba lagi.");
-        }
+        // Continue to solid fallback rendering.
       }
     }
   }
 
   if (!subtitlePath) {
-    if (requiresOriginalSource) {
-      throw new Error("Video asli tidak tersedia untuk export. Upload ulang video lalu coba lagi.");
-    }
-
     await createSolidVideo(outputPath, preset.width, preset.height, preset.fps, durationSec);
-    return;
-  }
-
-  if (requiresOriginalSource) {
-    throw new Error("Subtitle fallback tidak cukup untuk export video upload. Upload ulang video lalu coba lagi.");
+    return "solid";
   }
 
   const baseVideoPath = `${outputPath}.base.mp4`;
   await createSolidVideo(baseVideoPath, preset.width, preset.height, preset.fps, durationSec);
   await burnSubtitleTrack(baseVideoPath, outputPath, subtitlePath);
+  return "solid";
 }
 
 async function renderThumbnailArtifact(
@@ -732,6 +718,7 @@ export async function POST(request: Request) {
     const thumbnailBySize = new Map((body.thumbnails ?? []).map((item) => [item.size, item.image]));
     const ytThumbnailPath = await writeDataUriToTempFile(thumbnailBySize.get("1280x720"), tempDir, `${baseName}-yt-thumb`);
     const igThumbnailPath = await writeDataUriToTempFile(thumbnailBySize.get("1080x1080"), tempDir, `${baseName}-ig-thumb`);
+    const fallbackNotes = new Set<string>();
 
     for (const artifact of artifacts) {
       if (artifact.name.endsWith(".json")) {
@@ -767,7 +754,14 @@ export async function POST(request: Request) {
               ? "square"
             : "youtube";
 
-        await renderVideoArtifact(outputPath, clip, body.asset, previewImagePath, platform, subtitlePath);
+        const renderMode = await renderVideoArtifact(outputPath, clip, body.asset, previewImagePath, platform, subtitlePath);
+        if (renderMode !== "source") {
+          fallbackNotes.add(
+            renderMode === "preview"
+              ? "Sebagian MP4 dibuat dari preview image karena video asli tidak tersedia di server."
+              : "Sebagian MP4 dibuat dari fallback canvas + subtitle karena video asli tidak tersedia di server."
+          );
+        }
         zip.file(artifact.name, await readFile(outputPath));
         continue;
       }
@@ -784,13 +778,31 @@ export async function POST(request: Request) {
       }
     }
 
+    if (fallbackNotes.size > 0) {
+      zip.file(
+        `${baseName}_export_notice.txt`,
+        [
+          "ClipForge export notice",
+          "",
+          ...fallbackNotes,
+          "",
+          "Bundle ini tetap valid untuk review, metadata, subtitle, dan thumbnail.",
+          "Untuk crop dari footage asli, upload ulang video ke sesi/server yang sama lalu export lagi."
+        ].join("\n")
+      );
+    }
+
     const buffer = await zip.generateAsync({ type: "uint8array" });
     const zipBuffer = Buffer.from(buffer);
+    const notice = fallbackNotes.size > 0
+      ? "Export completed with fallback media because the original upload was unavailable on the server."
+      : "Export completed.";
 
     return new NextResponse(zipBuffer, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${sanitizeBaseName(clip.id)}.zip"`
+        "Content-Disposition": `attachment; filename="${sanitizeBaseName(clip.id)}.zip"`,
+        "X-ClipForge-Export-Notice": notice
       }
     });
   } catch (error) {

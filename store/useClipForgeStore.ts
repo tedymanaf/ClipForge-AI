@@ -147,7 +147,14 @@ function normalizePlatforms(value: unknown): Platform[] {
   return platforms.length ? platforms : ["tiktok", "instagram", "youtube"];
 }
 
-function normalizeClip(value: unknown, index: number, projectId: string, projectName: string, fallbackImage: string): ClipCandidate {
+function normalizeClip(
+  value: unknown,
+  index: number,
+  projectId: string,
+  projectName: string,
+  fallbackImage: string,
+  preferredPreviewImage?: string
+): ClipCandidate {
   const raw = asRecord(value);
   const transcript = Array.isArray(raw.transcript)
     ? raw.transcript.map((segment, segmentIndex) => normalizeTranscriptSegment(segment, segmentIndex))
@@ -187,7 +194,7 @@ function normalizeClip(value: unknown, index: number, projectId: string, project
     status: raw.status === "suggested" || raw.status === "approved" || raw.status === "rendered"
       ? raw.status
       : "approved",
-    previewImage: asString(raw.previewImage, fallbackImage)
+    previewImage: preferredPreviewImage ?? asString(raw.previewImage, fallbackImage)
   };
 }
 
@@ -206,7 +213,7 @@ function normalizeCaptionCue(value: unknown, index: number, fallbackText: string
   };
 }
 
-function normalizeThumbnailVariant(value: unknown, index: number, fallbackImage: string): ThumbnailVariant {
+function normalizeThumbnailVariant(value: unknown, index: number, fallbackImage: string, preferredImage?: string): ThumbnailVariant {
   const raw = asRecord(value);
 
   return {
@@ -220,7 +227,7 @@ function normalizeThumbnailVariant(value: unknown, index: number, fallbackImage:
             ? "action-frame"
             : "text-forward",
     label: asString(raw.label, `Recovered thumbnail ${index + 1}`),
-    image: asString(raw.image, fallbackImage),
+    image: preferredImage ?? asString(raw.image, fallbackImage),
     size: raw.size === "1280x720" || raw.size === "1080x1080" || raw.size === "1080x1920" ? raw.size : "1080x1920"
   };
 }
@@ -288,8 +295,16 @@ function normalizeProject(value: unknown): Project {
   const updatedAt = asString(raw.updatedAt, createdAt);
   const rawAsset = asRecord(raw.asset);
   const fallbackThumbnail = createFallbackThumbnail(projectName);
+  const assetSource =
+    rawAsset.source === "file" || rawAsset.source === "youtube" || rawAsset.source === "google-drive" || rawAsset.source === "demo"
+      ? rawAsset.source
+      : "file";
+  const assetThumbnail = asString(rawAsset.thumbnail, fallbackThumbnail);
+  const preferredPreviewImage = assetSource === "demo" ? undefined : assetThumbnail;
   const clips = Array.isArray(raw.clips)
-    ? raw.clips.map((clip, clipIndex) => normalizeClip(clip, clipIndex, projectId, projectName, fallbackThumbnail))
+    ? raw.clips.map((clip, clipIndex) =>
+        normalizeClip(clip, clipIndex, projectId, projectName, fallbackThumbnail, preferredPreviewImage)
+      )
     : [];
   const progress = clamp(asNumber(raw.progress, clips.length ? 100 : 0), 0, 100);
   const statusFallback: JobStatus = clips.length ? "ready" : "queued";
@@ -319,9 +334,7 @@ function normalizeProject(value: unknown): Project {
     asset: {
       id: asString(rawAsset.id, createId("asset")),
       name: asString(rawAsset.name, `${projectName}.mp4`),
-      source: rawAsset.source === "file" || rawAsset.source === "youtube" || rawAsset.source === "google-drive" || rawAsset.source === "demo"
-        ? rawAsset.source
-        : "file",
+      source: assetSource,
       path: asOptionalString(rawAsset.path),
       url: asOptionalString(rawAsset.url),
       durationSec: Math.max(0, asNumber(rawAsset.durationSec, clips[0]?.endSec ?? 0)),
@@ -329,7 +342,7 @@ function normalizeProject(value: unknown): Project {
       height: Math.max(1, asNumber(rawAsset.height, 1080)),
       sizeBytes: Math.max(0, asNumber(rawAsset.sizeBytes, 0)),
       codec: asString(rawAsset.codec, "Unknown"),
-      thumbnail: asString(rawAsset.thumbnail, fallbackThumbnail)
+      thumbnail: assetThumbnail
     },
     clips,
     transcript,
@@ -346,9 +359,12 @@ function normalizeProject(value: unknown): Project {
     thumbnails: Object.fromEntries(
       clips.map((clip) => {
         const thumbSource = thumbnailsSource[clip.id];
+        const preferredThumbnailImage = assetSource === "demo" ? undefined : clip.previewImage;
         const normalizedThumbs = Array.isArray(thumbSource)
-          ? thumbSource.map((thumb, thumbIndex) => normalizeThumbnailVariant(thumb, thumbIndex, clip.previewImage))
-          : [normalizeThumbnailVariant({}, 0, clip.previewImage)];
+          ? thumbSource.map((thumb, thumbIndex) =>
+              normalizeThumbnailVariant(thumb, thumbIndex, clip.previewImage, preferredThumbnailImage)
+            )
+          : [normalizeThumbnailVariant({}, 0, clip.previewImage, preferredThumbnailImage)];
 
         return [clip.id, normalizedThumbs];
       })

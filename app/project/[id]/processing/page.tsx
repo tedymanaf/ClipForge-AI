@@ -11,6 +11,7 @@ import { ClipCard } from "@/components/ClipCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProcessingTimeline } from "@/components/ProcessingTimeline";
+import { getProjectPrimaryRoute, isProjectReadyForReview } from "@/lib/project-routing";
 import { useClipForgeStore } from "@/store/useClipForgeStore";
 import { selectProject } from "@/store/useClipForgeStore";
 
@@ -36,13 +37,13 @@ export default function ProcessingPage() {
       seedDemoProjects();
       const fallback = useClipForgeStore.getState().projects[0];
       if (fallback) {
-        router.replace(`/project/${fallback.id}/processing`);
+        router.replace(getProjectPrimaryRoute(fallback));
       }
       return;
     }
 
     if (!project) {
-      router.replace(`/project/${projects[0].id}/processing`);
+      router.replace(getProjectPrimaryRoute(projects[0]));
     }
   }, [hydrated, project, projects, router, seedDemoProjects]);
 
@@ -56,7 +57,7 @@ export default function ProcessingPage() {
 
     const ensureInitialized = () => {
       const current = useClipForgeStore.getState().projects.find((item) => item.id === projectId);
-      if (!current || current.status === "ready") {
+      if (!current || isProjectReadyForReview(current)) {
         return false;
       }
 
@@ -88,7 +89,7 @@ export default function ProcessingPage() {
         return;
       }
 
-      if (current.status === "ready") {
+      if (isProjectReadyForReview(current)) {
         window.clearInterval(interval);
         initializedProjectRef.current = null;
         return;

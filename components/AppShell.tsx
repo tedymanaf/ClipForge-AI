@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/dashboard#upload", label: "Upload New Video", icon: UploadCloud },
-  { href: "/dashboard#projects", label: "My Projects", icon: Clapperboard },
-  { href: "/dashboard#library", label: "Clip Library", icon: Library },
-  { href: "/dashboard#analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/dashboard#settings", label: "Settings", icon: Settings2 }
+  { href: "/dashboard#upload", label: "Upload Video Baru", icon: UploadCloud },
+  { href: "/dashboard#projects", label: "Project Saya", icon: Clapperboard },
+  { href: "/dashboard#library", label: "Perpustakaan Clip", icon: Library },
+  { href: "/dashboard#analytics", label: "Analitik", icon: BarChart3 },
+  { href: "/dashboard#settings", label: "Pengaturan", icon: Settings2 }
 ];
 
 export function AppShell({
@@ -92,7 +92,7 @@ export function AppShell({
   return (
     <div className="min-h-screen">
       <div className="mx-auto grid min-h-screen max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[280px_1fr]">
-        <aside className="glass-card sticky top-4 h-fit p-5 lg:h-[calc(100vh-2rem)]">
+        <aside className="glass-card sticky top-4 h-fit overflow-y-auto p-5 lg:h-[calc(100vh-2rem)]">
           <div className="mb-8">
             <Link href="/" className="inline-flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-glow">
@@ -100,7 +100,7 @@ export function AppShell({
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">ClipForge AI</p>
-                <p className="text-xs text-white/45">Upload Once. Go Viral Everywhere.</p>
+                <p className="text-xs text-white/45">Upload Sekali. Sebar Viral ke Mana-mana.</p>
               </div>
             </Link>
           </div>
@@ -131,18 +131,18 @@ export function AppShell({
           <div className="mt-8 rounded-[24px] border border-cyan-300/10 bg-cyan-400/8 p-4">
             <p className="text-sm font-semibold text-white">Offline-ready pipeline</p>
             <p className="mt-2 text-xs leading-5 text-white/60">
-              Client-side FFmpeg.wasm fallback and mock AI routes keep the workflow usable while real APIs are wired in.
+              Fallback FFmpeg.wasm di sisi client dan route AI mock menjaga workflow tetap bisa dipakai sambil integrasi API asli disiapkan.
             </p>
           </div>
         </aside>
 
-        <main className="space-y-6">
+        <main className="min-w-0 space-y-6">
           <div className="glass-card flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-            <div>
+            <div className="min-w-0">
               {eyebrow ? <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">{eyebrow}</p> : null}
-              <h1 className="mt-1 text-3xl font-semibold text-white">{title}</h1>
+              <h1 className="mt-1 break-words text-3xl font-semibold text-white">{title}</h1>
             </div>
-            {actions}
+            {actions ? <div className="flex flex-wrap items-center gap-3 md:justify-end">{actions}</div> : null}
           </div>
           {children}
         </main>

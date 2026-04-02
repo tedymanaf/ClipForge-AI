@@ -22,26 +22,28 @@ function createThumbnailSvg(title: string, label: string, accent: string, size: 
 }
 
 export function generateThumbnailVariants(clip: ClipCandidate): ThumbnailVariant[] {
+  const baseImage = clip.previewImage?.trim();
+
   return [
     {
       id: createId("thumb"),
       kind: "face-close-up",
       label: "Face Close-Up",
-      image: createThumbnailSvg(clip.title, "Face Close-Up", "#7C3AED", "1280x720"),
+      image: baseImage || createThumbnailSvg(clip.title, "Face Close-Up", "#7C3AED", "1280x720"),
       size: "1280x720"
     },
     {
       id: createId("thumb"),
       kind: "action-frame",
       label: "Action Frame",
-      image: createThumbnailSvg(clip.title, "Action Frame", "#06B6D4", "1080x1080"),
+      image: baseImage || createThumbnailSvg(clip.title, "Action Frame", "#06B6D4", "1080x1080"),
       size: "1080x1080"
     },
     {
       id: createId("thumb"),
       kind: "text-forward",
       label: "Text Forward",
-      image: createThumbnailSvg(clip.title, "Text Forward", "#10B981", "1080x1920"),
+      image: baseImage || createThumbnailSvg(clip.title, "Text Forward", "#10B981", "1080x1920"),
       size: "1080x1920"
     }
   ];

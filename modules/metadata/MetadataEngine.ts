@@ -6,16 +6,16 @@ export function generateMetadataBundle(clip: ClipCandidate): MetadataBundle {
   return {
     clipId: clip.id,
     titles: {
-      tiktok: [`${base} - must watch`, "kenapa bagian ini bikin retention naik", "creator wajib lihat ini"],
+      tiktok: [`${base} - wajib lihat`, "kenapa bagian ini bikin retention naik", "creator wajib lihat ini"],
       instagram: [`${base} #creatorgrowth`, `${base} dan efeknya ke reels`, "ini hook yang bikin orang nonton"],
-      youtube: [base, `${base} | Viral Clip Breakdown`, `${base} That Stops Scroll`],
-      square: [base, `${base} - social remix`, `${base} - creator cut`]
+      youtube: [base, `${base} | Bedah Clip Viral`, `${base} yang bikin orang berhenti scroll`],
+      square: [base, `${base} - remix sosial`, `${base} - potongan creator`]
     },
     descriptions: {
       tiktok: "Tiga detik pertama itu segalanya. Save ide ini buat video kamu berikutnya.",
       instagram: "Kalau intro lemah, value kamu tidak sempat dilihat. Save dan share ke tim content kamu.",
-      youtube: "This short highlights the exact sentence that carries the hook, value, and retention curve.",
-      square: "Repurposed with ClipForge AI."
+      youtube: "Short ini menyorot kalimat yang membawa hook, value, dan kurva retention paling kuat.",
+      square: "Diolah ulang dengan ClipForge AI."
     },
     hashtags: {
       tiktok: ["#viralclip", "#creatorai", "#hook", "#contenttips", "#fyp"],
@@ -39,8 +39,8 @@ export function generateMetadataBundle(clip: ClipCandidate): MetadataBundle {
     category: clip.contentType,
     sentiment: clip.sentiment,
     clipSeriesSuggestion:
-      "Pair this clip with a follow-up breakdown and a case-study clip later in the week for stronger series momentum.",
+      "Pasangkan clip ini dengan breakdown lanjutan dan clip studi kasus di akhir minggu untuk momentum seri yang lebih kuat.",
     hookRewriteSuggestion:
-      "Open with: 'Kalau intro video kamu lemah, algoritma hampir tidak kasih kesempatan kedua.'"
+      "Buka dengan: 'Kalau intro video kamu lemah, algoritma hampir tidak kasih kesempatan kedua.'"
   };
 }

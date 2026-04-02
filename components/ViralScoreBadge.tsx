@@ -1,3 +1,5 @@
+import { Flame } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -9,5 +11,10 @@ export function ViralScoreBadge({ score }: { score: number }) {
         ? "border-amber-300/20 bg-amber-300/15 text-amber-100"
         : "border-rose-300/20 bg-rose-300/15 text-rose-200";
 
-  return <Badge className={cn("gap-2 font-semibold", tone)}>🔥 {score}% Viral</Badge>;
+  return (
+    <Badge className={cn("gap-2 font-semibold", tone)}>
+      <Flame className="h-3.5 w-3.5" />
+      {score}% Viral
+    </Badge>
+  );
 }

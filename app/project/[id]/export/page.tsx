@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
+import { getProjectPrimaryRoute, isProjectReadyForReview } from "@/lib/project-routing";
 import { ExportCenter } from "@/modules/export/ExportCenter";
 import { selectClip } from "@/store/useClipForgeStore";
 import { selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
@@ -37,6 +38,8 @@ export default function ExportPage() {
       const fallbackClip = fallbackProject?.clips[0];
       if (fallbackProject && fallbackClip) {
         router.replace(`/project/${fallbackProject.id}/export?clipId=${fallbackClip.id}`);
+      } else if (fallbackProject) {
+        router.replace(getProjectPrimaryRoute(fallbackProject));
       }
       return;
     }
@@ -46,7 +49,14 @@ export default function ExportPage() {
       const fallbackClip = fallbackProject?.clips[0];
       if (fallbackProject && fallbackClip) {
         router.replace(`/project/${fallbackProject.id}/export?clipId=${fallbackClip.id}`);
+      } else if (fallbackProject) {
+        router.replace(getProjectPrimaryRoute(fallbackProject));
       }
+      return;
+    }
+
+    if (!isProjectReadyForReview(project)) {
+      router.replace(getProjectPrimaryRoute(project));
       return;
     }
 
@@ -73,6 +83,16 @@ export default function ExportPage() {
       <AppShell title="Recovering export" eyebrow="Distribution Center">
         <Card>
           <p className="text-white/70">Target export tidak ditemukan. Mengarahkan ke clip yang tersedia...</p>
+        </Card>
+      </AppShell>
+    );
+  }
+
+  if (!isProjectReadyForReview(project)) {
+    return (
+      <AppShell title="Preparing export" eyebrow="Distribution Center">
+        <Card>
+          <p className="text-white/70">Project ini belum siap diexport. Mengarahkan ke halaman processing...</p>
         </Card>
       </AppShell>
     );

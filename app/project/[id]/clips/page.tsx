@@ -9,6 +9,7 @@ import { ClipCard } from "@/components/ClipCard";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { getProjectPrimaryRoute, isProjectReadyForReview } from "@/lib/project-routing";
 import { selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
 
 export default function ClipsPage() {
@@ -29,13 +30,18 @@ export default function ClipsPage() {
       seedDemoProjects();
       const fallback = useClipForgeStore.getState().projects[0];
       if (fallback) {
-        router.replace(`/project/${fallback.id}/clips`);
+        router.replace(getProjectPrimaryRoute(fallback));
       }
       return;
     }
 
     if (!project) {
-      router.replace(`/project/${projects[0].id}/clips`);
+      router.replace(getProjectPrimaryRoute(projects[0]));
+      return;
+    }
+
+    if (!isProjectReadyForReview(project)) {
+      router.replace(getProjectPrimaryRoute(project));
     }
   }, [hydrated, project, projects, router, seedDemoProjects]);
 
@@ -54,6 +60,16 @@ export default function ClipsPage() {
       <AppShell title="Recovering project" eyebrow="Review & Approve">
         <Card>
           <p className="text-white/70">Project lama tidak ditemukan. Mengarahkan ke project yang tersedia...</p>
+        </Card>
+      </AppShell>
+    );
+  }
+
+  if (!isProjectReadyForReview(project)) {
+    return (
+      <AppShell title="Preparing clips" eyebrow="Review & Approve">
+        <Card>
+          <p className="text-white/70">Project ini belum siap direview. Mengarahkan ke halaman processing...</p>
         </Card>
       </AppShell>
     );

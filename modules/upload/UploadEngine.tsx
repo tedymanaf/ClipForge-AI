@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { getProjectPrimaryRoute } from "@/lib/project-routing";
 import { useClipForgeStore } from "@/store/useClipForgeStore";
 import { QueueItem, UploadDescriptor, UploadSource } from "@/types";
 import { createId, formatBytes, formatDuration, svgToDataUri } from "@/lib/utils";
@@ -55,19 +56,43 @@ async function extractVideoMetadata(file: File): Promise<UploadDescriptor> {
       let thumbnail = createFallbackThumbnail(file.name);
 
       try {
-        video.currentTime = Math.min(1, Math.max(0, durationSec / 4));
+        video.currentTime = durationSec > 0 ? Math.min(Math.max(durationSec * 0.25, 0.1), Math.max(durationSec - 0.1, 0.1)) : 0;
 
         thumbnail = await new Promise<string>((thumbnailResolve) => {
-          video.onseeked = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
-            const context = canvas.getContext("2d");
-            context?.drawImage(video, 0, 0, width, height);
-            thumbnailResolve(canvas.toDataURL("image/jpeg", 0.82));
-          };
+          let settled = false;
+          const timeoutId = window.setTimeout(() => {
+            if (settled) {
+              return;
+            }
 
-          setTimeout(() => thumbnailResolve(createFallbackThumbnail(file.name)), 1000);
+            settled = true;
+            thumbnailResolve(createFallbackThumbnail(file.name));
+          }, 1000);
+
+          video.onseeked = () => {
+            if (settled) {
+              return;
+            }
+
+            settled = true;
+            window.clearTimeout(timeoutId);
+
+            const maxThumbnailWidth = 960;
+            const renderWidth = Math.min(width, maxThumbnailWidth);
+            const renderHeight = Math.max(1, Math.round((renderWidth / Math.max(width, 1)) * height));
+            const canvas = document.createElement("canvas");
+            canvas.width = renderWidth;
+            canvas.height = renderHeight;
+            const context = canvas.getContext("2d");
+
+            if (!context) {
+              thumbnailResolve(createFallbackThumbnail(file.name));
+              return;
+            }
+
+            context.drawImage(video, 0, 0, renderWidth, renderHeight);
+            thumbnailResolve(canvas.toDataURL("image/jpeg", 0.76));
+          };
         });
       } catch {
         thumbnail = createFallbackThumbnail(file.name);
@@ -244,7 +269,7 @@ export function UploadEngine() {
     seedDemoProjects();
     const first = useClipForgeStore.getState().projects[0];
     if (first) {
-      router.push(`/project/${first.id}/clips`);
+      router.push(getProjectPrimaryRoute(first));
     }
   }
 
@@ -281,17 +306,17 @@ export function UploadEngine() {
             >
               <UploadCloud className="h-9 w-9 text-white" />
             </motion.div>
-            <h3 className="text-2xl font-semibold text-white">Drop long-form videos here</h3>
+            <h3 className="text-2xl font-semibold text-white">Letakkan video panjang di sini</h3>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-white/60">
               MP4, MOV, AVI, MKV, WebM hingga 4GB. Batch sampai 5 video sekaligus, thumbnail preview otomatis, plus metadata dasar seperti durasi, resolusi, dan codec.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Button type="button" className="gap-2">
                 <Film className="h-4 w-4" />
-                Choose Videos
+                Pilih Video
               </Button>
               <Button type="button" variant="outline" onClick={(event) => { event.stopPropagation(); activateDemoMode(); }}>
-                Try without upload
+                Coba tanpa upload
               </Button>
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-xs text-white/45">
@@ -327,7 +352,7 @@ export function UploadEngine() {
               />
             </div>
             <Button className="h-auto min-h-[56px] px-6" onClick={handleImportUrl} disabled={working}>
-              {working ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "Import URL"}
+              {working ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "Impor URL"}
             </Button>
           </div>
 
@@ -341,7 +366,7 @@ export function UploadEngine() {
             {recentProjects.map((project) => (
               <Link
                 key={project.id}
-                href={`/project/${project.id}/clips`}
+                href={getProjectPrimaryRoute(project)}
                 className="rounded-[24px] border border-white/10 bg-black/20 p-4 transition hover:border-cyan-300/25 hover:bg-black/30"
               >
                 <div
@@ -362,8 +387,8 @@ export function UploadEngine() {
 
       <Card className="space-y-5">
         <div>
-          <p className="font-medium text-white">Upload Queue</p>
-          <p className="text-sm text-white/55">Realtime progress with local-first persistence and queue badges.</p>
+          <p className="font-medium text-white">Antrean Upload</p>
+          <p className="text-sm text-white/55">Progress realtime dengan penyimpanan lokal dan status antrean yang jelas.</p>
         </div>
 
         {queue.length === 0 ? (
@@ -386,11 +411,11 @@ export function UploadEngine() {
         )}
 
         <div className="rounded-[28px] border border-cyan-300/15 bg-cyan-300/8 p-5">
-          <p className="font-medium text-white">Processing targets</p>
+          <p className="font-medium text-white">Target pemrosesan</p>
           <div className="mt-3 space-y-2 text-sm text-white/65">
-            <p>Start processing under 3 seconds after upload.</p>
-            <p>First clip visible in under 2 minutes for 10-minute source.</p>
-            <p>Bahasa Indonesia transcription and metadata ready by default.</p>
+            <p>Pemrosesan dimulai kurang dari 3 detik setelah upload.</p>
+            <p>Clip pertama muncul kurang dari 2 menit untuk sumber 10 menit.</p>
+            <p>Transkripsi dan metadata Bahasa Indonesia aktif secara default.</p>
           </div>
         </div>
       </Card>

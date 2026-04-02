@@ -10,6 +10,7 @@ import { CaptionOverlay } from "@/components/CaptionOverlay";
 import { PlatformPreview } from "@/components/PlatformPreview";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { getProjectPrimaryRoute, isProjectReadyForReview } from "@/lib/project-routing";
 import { ClipEditor } from "@/modules/editor/ClipEditor";
 import { selectClip, selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
 
@@ -33,6 +34,8 @@ export default function ClipDetailPage() {
       const fallbackClip = fallbackProject?.clips[0];
       if (fallbackProject && fallbackClip) {
         router.replace(`/project/${fallbackProject.id}/clip/${fallbackClip.id}`);
+      } else if (fallbackProject) {
+        router.replace(getProjectPrimaryRoute(fallbackProject));
       }
       return;
     }
@@ -42,7 +45,14 @@ export default function ClipDetailPage() {
       const fallbackClip = fallbackProject?.clips[0];
       if (fallbackProject && fallbackClip) {
         router.replace(`/project/${fallbackProject.id}/clip/${fallbackClip.id}`);
+      } else if (fallbackProject) {
+        router.replace(getProjectPrimaryRoute(fallbackProject));
       }
+      return;
+    }
+
+    if (!isProjectReadyForReview(project)) {
+      router.replace(getProjectPrimaryRoute(project));
       return;
     }
 
@@ -69,6 +79,16 @@ export default function ClipDetailPage() {
       <AppShell title="Recovering clip" eyebrow="Manual Fine Tuning">
         <Card>
           <p className="text-white/70">Clip tidak ditemukan. Mengarahkan ke clip yang tersedia...</p>
+        </Card>
+      </AppShell>
+    );
+  }
+
+  if (!isProjectReadyForReview(project)) {
+    return (
+      <AppShell title="Preparing clip" eyebrow="Manual Fine Tuning">
+        <Card>
+          <p className="text-white/70">Project ini belum siap diedit. Mengarahkan ke halaman processing...</p>
         </Card>
       </AppShell>
     );

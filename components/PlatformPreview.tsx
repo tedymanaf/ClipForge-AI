@@ -19,9 +19,13 @@ export function PlatformPreview({ clip }: { clip: ClipCandidate }) {
             <Badge>{platform === "youtube" ? "60fps" : "30fps"}</Badge>
           </div>
           <div
-            className="aspect-[9/16] rounded-[24px] border border-white/10 bg-cover bg-center"
-            style={{ backgroundImage: `url("${clip.previewImage}")` }}
+            className="aspect-[9/16] rounded-[24px] border border-white/10 bg-slate-950 bg-cover bg-center"
+            style={clip.previewImage ? { backgroundImage: `url("${clip.previewImage}")` } : undefined}
           />
+          <div className="mt-3 flex items-center justify-between text-xs text-white/45">
+            <span>Preview {labels[platform]}</span>
+            <span>{clip.durationSec}s</span>
+          </div>
         </Card>
       ))}
     </div>

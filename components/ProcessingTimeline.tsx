@@ -27,8 +27,8 @@ export function ProcessingTimeline({ steps }: { steps: ProcessingStep[] }) {
               )}
             </div>
             <div className="flex-1">
-              <div className="flex items-center justify-between gap-4">
-                <div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="font-medium text-white">{step.label}</p>
                   <p className="text-sm text-white/55">{step.description}</p>
                 </div>
