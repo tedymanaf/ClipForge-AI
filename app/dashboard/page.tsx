@@ -28,8 +28,20 @@ import { useClipForgeStore } from "@/store/useClipForgeStore";
 export default function DashboardPage() {
   const router = useRouter();
   const projects = useClipForgeStore((state) => state.projects);
+  const currentProjectId = useClipForgeStore((state) => state.currentProjectId);
+  const processingStage = useClipForgeStore((state) => state.processingStage);
+  const processingProgress = useClipForgeStore((state) => state.processingProgress);
   const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const project = projects[0];
+  const activeProject = useMemo(
+    () => projects.find((item) => item.id === currentProjectId) ?? null,
+    [projects, currentProjectId]
+  );
+  const hasActiveProcessing =
+    processingStage === "uploading" ||
+    processingStage === "transcribing" ||
+    processingStage === "scoring" ||
+    processingStage === "cutting";
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -149,27 +161,63 @@ export default function DashboardPage() {
           <Card className="space-y-5">
             <div>
               <p className="section-eyebrow">Langkah Berikutnya</p>
-              <p className="mt-3 text-2xl font-semibold text-white">Aksi tercepat untuk lanjut kerja hari ini.</p>
+              <p className="mt-3 text-2xl font-semibold text-white">
+                {hasActiveProcessing ? "Fokus saat ini masih di satu proses aktif." : "Aksi tercepat untuk lanjut kerja hari ini."}
+              </p>
             </div>
 
             <div className="space-y-3">
-              <Link href="/dashboard#upload" className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
-                <p className="font-medium text-white">Mulai project baru</p>
-                <p className="mt-2 text-sm leading-6 text-white/60">Masukkan satu video lalu biarkan aplikasi langsung menyiapkan clip terbaik.</p>
-              </Link>
-              {project ? (
-                <Link
-                  href={getProjectPrimaryRoute(project)}
-                  className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]"
-                >
-                  <p className="font-medium text-white">Lanjutkan project terbaru</p>
-                  <p className="mt-2 text-sm leading-6 text-white/60">Masuk lagi ke langkah kerja paling penting tanpa muter-muter halaman.</p>
-                </Link>
-              ) : null}
-              <Link href="/dashboard#library" className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
-                <p className="font-medium text-white">Lihat clip siap review</p>
-                <p className="mt-2 text-sm leading-6 text-white/60">Bandingkan kandidat, edit, lalu lanjut ke download MP4.</p>
-              </Link>
+              {hasActiveProcessing ? (
+                <div className="rounded-[24px] border border-cyan-300/20 bg-cyan-300/8 p-4">
+                  <p className="font-medium text-white">
+                    {processingStage === "uploading"
+                      ? "Upload masih berjalan"
+                      : processingStage === "transcribing"
+                        ? "Backend sedang mentranskripsi"
+                        : processingStage === "scoring"
+                          ? "AI sedang memilih clip terbaik"
+                          : "Backend sedang memotong MP4"}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-white/60">
+                    {activeProject
+                      ? `${activeProject.name} sedang diproses. Progress saat ini ${processingProgress}%.`
+                      : `Satu project sedang diproses. Progress saat ini ${processingProgress}%.`}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link href="/dashboard#upload">
+                      <Button variant="outline">Lihat progress aktif</Button>
+                    </Link>
+                    {activeProject ? (
+                      <Link href={getProjectPrimaryRoute(activeProject)}>
+                        <Button className="gap-2">
+                          Buka project aktif
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <Link href="/dashboard#upload" className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
+                    <p className="font-medium text-white">Mulai project baru</p>
+                    <p className="mt-2 text-sm leading-6 text-white/60">Masukkan satu video lalu biarkan aplikasi langsung menyiapkan clip terbaik.</p>
+                  </Link>
+                  {project ? (
+                    <Link
+                      href={getProjectPrimaryRoute(project)}
+                      className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]"
+                    >
+                      <p className="font-medium text-white">Lanjutkan project terbaru</p>
+                      <p className="mt-2 text-sm leading-6 text-white/60">Masuk lagi ke langkah kerja paling penting tanpa muter-muter halaman.</p>
+                    </Link>
+                  ) : null}
+                  <Link href="/dashboard#library" className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
+                    <p className="font-medium text-white">Lihat clip siap review</p>
+                    <p className="mt-2 text-sm leading-6 text-white/60">Bandingkan kandidat, edit, lalu lanjut ke download MP4.</p>
+                  </Link>
+                </>
+              )}
               <ResetWorkspaceButton
                 fullWidth
                 title="Reset penuh workspace"
@@ -181,6 +229,7 @@ export default function DashboardPage() {
               <p className="font-medium text-white">Yang diprioritaskan</p>
               <div className="mt-3 space-y-2 text-sm text-white/65">
                 <p>Upload harus terlihat hidup dalam beberapa detik.</p>
+                <p>Upload jaringan ke HF free tier bisa terasa lambat untuk file besar, jadi status harus jujur.</p>
                 <p>Clip terbaik harus muncul cepat dan mudah dipilih.</p>
                 <p>Download MP4 harus jadi tujuan akhir yang paling jelas.</p>
               </div>

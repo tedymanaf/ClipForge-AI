@@ -280,6 +280,7 @@ export function UploadEngine() {
   const [working, setWorking] = useState(false);
   const [flowMessage, setFlowMessage] = useState("Pilih satu video, lalu sistem akan langsung memproses dan membuka hasil review.");
   const [activeUploadName, setActiveUploadName] = useState<string | null>(null);
+  const [activeUploadSizeBytes, setActiveUploadSizeBytes] = useState<number | null>(null);
 
   const projects = useClipForgeStore((state) => state.projects);
   const queue = useClipForgeStore((state) => state.queue);
@@ -307,6 +308,7 @@ export function UploadEngine() {
     setWorking(false);
     setError(null);
     setActiveUploadName(null);
+    setActiveUploadSizeBytes(null);
     setFlowMessage(message ?? "Pilih satu video, lalu sistem akan langsung memproses dan membuka hasil review.");
     activeProjectIdRef.current = null;
     activeQueueIdRef.current = null;
@@ -422,6 +424,7 @@ export function UploadEngine() {
     setWorking(true);
     setError(null);
     setActiveUploadName(descriptor.name);
+    setActiveUploadSizeBytes(descriptor.sizeBytes);
     setFlowMessage("Video sedang diunggah ke backend FastAPI.");
     setProcessingStatus("uploading", 0);
     setCurrentProjectId(null);
@@ -558,6 +561,21 @@ export function UploadEngine() {
           : displayStage === "ready"
             ? 3
             : 0;
+
+  const stageGuidance =
+    displayStage === "uploading"
+      ? activeUploadSizeBytes
+        ? `Ukuran file ${formatBytes(activeUploadSizeBytes)}. Di Hugging Face Space gratis, upload video sekitar 100MB memang bisa butuh 1-3 menit tergantung koneksi.`
+        : "Upload jaringan ke server sedang berjalan. Di Hugging Face Space gratis, file besar memang terasa lebih lambat."
+      : displayStage === "transcribing"
+        ? "Upload sudah selesai. Sekarang backend sedang mengekstrak audio dan menyiapkan transkripsi."
+        : displayStage === "scoring"
+          ? "Video sudah masuk server. Model AI sedang memilih potongan terbaik dari transcript."
+          : displayStage === "cutting"
+            ? "Hampir selesai. ffmpeg sedang memotong clip MP4 final untuk direview."
+            : displayStage === "ready"
+              ? "Semua langkah utama selesai. Clip kandidat siap dibuka."
+              : "Belum ada proses aktif. Pilih satu video untuk memulai.";
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -699,6 +717,7 @@ export function UploadEngine() {
             <div>
               <p className="font-medium text-white">{activeUploadName ?? "Belum ada video aktif"}</p>
               <p className="mt-2 text-sm leading-6 text-white/60">{flowMessage}</p>
+              <p className="mt-2 text-sm leading-6 text-white/45">{stageGuidance}</p>
               {currentProjectId ? (
                 <p className="mt-2 text-xs uppercase tracking-[0.18em] text-white/40">Project ID: {currentProjectId}</p>
               ) : null}
