@@ -2,17 +2,15 @@
 
 import { MouseEvent, ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, Clapperboard, Home, Library, Settings2, UploadCloud } from "lucide-react";
+import { ArrowUpRight, Clapperboard, Home, Settings2, UploadCloud } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/dashboard#upload", label: "Upload Video Baru", icon: UploadCloud },
-  { href: "/dashboard#projects", label: "Project Saya", icon: Clapperboard },
-  { href: "/dashboard#library", label: "Perpustakaan Clip", icon: Library },
-  { href: "/dashboard#analytics", label: "Analitik", icon: BarChart3 },
+  { href: "/dashboard#upload", label: "Upload", icon: UploadCloud },
+  { href: "/dashboard#library", label: "Review Clip", icon: Clapperboard },
   { href: "/dashboard#settings", label: "Pengaturan", icon: Settings2 }
 ];
 
@@ -100,7 +98,7 @@ export function AppShell({
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">ClipForge AI</p>
-                <p className="text-xs text-white/45">Workspace short-form yang lebih rapi.</p>
+                <p className="text-xs text-white/45">Upload, review, edit, download.</p>
               </div>
             </Link>
           </div>
@@ -108,9 +106,9 @@ export function AppShell({
           <div className="mb-4 rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
             <p className="section-eyebrow">Cara Pakai</p>
             <div className="mt-3 space-y-3 text-sm text-white/65">
-              <p>1. Upload video atau pakai mode demo.</p>
-              <p>2. Tinjau clip terbaik dan alasan skornya.</p>
-              <p>3. Edit lalu export paket siap unggah.</p>
+              <p>1. Upload satu video.</p>
+              <p>2. Review clip terbaik.</p>
+              <p>3. Edit seperlunya dan download MP4.</p>
             </div>
           </div>
 
@@ -150,9 +148,9 @@ export function AppShell({
           </nav>
 
           <div className="mt-8 rounded-[24px] border border-cyan-300/10 bg-cyan-400/8 p-4">
-            <p className="text-sm font-semibold text-white">Mode prototipe tetap jalan</p>
+            <p className="text-sm font-semibold text-white">Tujuan utama</p>
             <p className="mt-2 text-xs leading-5 text-white/60">
-              Fallback FFmpeg.wasm dan mock AI membuat alur inti bisa diuji dulu sebelum integrasi API produksi dipasang.
+              Buat orang cepat sampai ke clip yang bisa diunduh, bukan tersesat di banyak layar.
             </p>
           </div>
         </aside>

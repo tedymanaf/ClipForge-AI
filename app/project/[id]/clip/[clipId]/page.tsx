@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Download } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
 import { CaptionOverlay } from "@/components/CaptionOverlay";
 import { PlatformPreview } from "@/components/PlatformPreview";
+import { WorkflowStepper } from "@/components/WorkflowStepper";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getProjectPrimaryRoute, isProjectReadyForReview } from "@/lib/project-routing";
@@ -87,14 +88,23 @@ export default function ClipDetailPage() {
       title={clip.title}
       eyebrow="Editor Manual"
       actions={
-        <Link href={`/project/${project.id}/export?clipId=${clip.id}`}>
-          <Button className="gap-2">
-            Export Clip
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </Link>
+        <>
+          <Link href={`/project/${project.id}/clips`}>
+            <Button variant="outline" className="gap-2">
+              Kembali ke Review
+            </Button>
+          </Link>
+          <Link href={`/project/${project.id}/export?clipId=${clip.id}`}>
+            <Button className="gap-2">
+              <Download className="h-4 w-4" />
+              Download MP4
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </>
       }
     >
+      <WorkflowStepper current="edit" />
       <ClipEditor project={project} clip={clip} />
       <PlatformPreview clip={clip} />
       <CaptionOverlay cues={project.captions[clip.id] ?? []} />

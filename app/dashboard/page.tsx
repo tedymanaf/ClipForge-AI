@@ -6,44 +6,24 @@ import {
   ArrowRight,
   Clapperboard,
   Film,
-  FolderKanban,
   Sparkles,
-  TimerReset,
   WandSparkles
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { AnalyticsDashboard } from "@/modules/analytics/AnalyticsDashboard";
 import { Settings } from "@/modules/settings/Settings";
 import { UploadEngine } from "@/modules/upload/UploadEngine";
 import { AppShell } from "@/components/AppShell";
 import { ClipCard } from "@/components/ClipCard";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import { ResetWorkspaceButton } from "@/components/ResetWorkspaceButton";
+import { WorkflowStepper } from "@/components/WorkflowStepper";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getProjectPrimaryRoute } from "@/lib/project-routing";
 import { formatBytes, formatDuration } from "@/lib/utils";
 import { useClipForgeStore } from "@/store/useClipForgeStore";
-
-const workflowHighlights = [
-  {
-    icon: FolderKanban,
-    title: "Alur lebih singkat",
-    description: "Sekarang fokus ke empat langkah inti: upload, review, edit, lalu download MP4."
-  },
-  {
-    icon: WandSparkles,
-    title: "Review lebih cepat",
-    description: "Setelah upload, aplikasi langsung menyiapkan clip terbaik supaya kamu tidak menunggu halaman kosong."
-  },
-  {
-    icon: TimerReset,
-    title: "Reset lebih jelas",
-    description: "Kalau data lama bentrok, kamu bisa bersihkan workspace penuh langsung dari UI."
-  }
-];
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -105,11 +85,10 @@ export default function DashboardPage() {
                 <div>
                   <p className="section-eyebrow">Control Center</p>
                   <h2 className="mt-3 text-3xl font-semibold text-white">
-                    Semua langkah penting sekarang lebih ringkas dan lebih mudah dibaca.
+                    Fokus utamanya sekarang cuma empat langkah inti.
                   </h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60">
-                    Dashboard ini dirapikan supaya kamu cepat tahu kondisi project, langkah berikutnya, dan area mana
-                    yang perlu direview dulu.
+                    Upload video, review clip yang dipilih AI, edit seperlunya, lalu download MP4. Sisanya dibuat jadi pendukung, bukan pengalih perhatian.
                   </p>
                 </div>
                 <Badge className="w-fit border-emerald-300/20 bg-emerald-300/10 text-emerald-100">
@@ -119,10 +98,10 @@ export default function DashboardPage() {
 
               <div className="grid gap-3 sm:grid-cols-4">
                 {[
-                  { label: "Total Project", value: overview.totalProjects.toString() },
+                  { label: "Project", value: overview.totalProjects.toString() },
                   { label: "Siap Review", value: overview.readyProjects.toString() },
-                  { label: "Total Clip", value: overview.totalClips.toString() },
-                  { label: "Durasi Sumber", value: formatDuration(overview.totalDurationSec) }
+                  { label: "Clip", value: overview.totalClips.toString() },
+                  { label: "Durasi", value: formatDuration(overview.totalDurationSec) }
                 ].map((item) => (
                   <div key={item.label} className="surface-muted px-4 py-4">
                     <p className="text-xs uppercase tracking-[0.24em] text-white/38">{item.label}</p>
@@ -162,6 +141,8 @@ export default function DashboardPage() {
                   Belum ada project aktif. Upload video baru atau jalankan mode demo untuk melihat alur lengkapnya.
                 </div>
               )}
+
+              <WorkflowStepper current={project ? (project.status === "ready" ? "review" : "upload") : "upload"} />
             </div>
           </Card>
 
@@ -174,7 +155,7 @@ export default function DashboardPage() {
             <div className="space-y-3">
               <Link href="/dashboard#upload" className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
                 <p className="font-medium text-white">Mulai project baru</p>
-                <p className="mt-2 text-sm leading-6 text-white/60">Upload video panjang dan biarkan ClipForge menyusun draft awal.</p>
+                <p className="mt-2 text-sm leading-6 text-white/60">Masukkan satu video lalu biarkan aplikasi langsung menyiapkan clip terbaik.</p>
               </Link>
               {project ? (
                 <Link
@@ -182,12 +163,12 @@ export default function DashboardPage() {
                   className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]"
                 >
                   <p className="font-medium text-white">Lanjutkan project terbaru</p>
-                  <p className="mt-2 text-sm leading-6 text-white/60">Masuk kembali ke titik kerja utama tanpa mencari-cari halaman.</p>
+                  <p className="mt-2 text-sm leading-6 text-white/60">Masuk lagi ke langkah kerja paling penting tanpa muter-muter halaman.</p>
                 </Link>
               ) : null}
               <Link href="/dashboard#library" className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
-                <p className="font-medium text-white">Buka perpustakaan clip</p>
-                <p className="mt-2 text-sm leading-6 text-white/60">Review clip kandidat terbaik dan lompat langsung ke editor.</p>
+                <p className="font-medium text-white">Lihat clip siap review</p>
+                <p className="mt-2 text-sm leading-6 text-white/60">Bandingkan kandidat, edit, lalu lanjut ke download MP4.</p>
               </Link>
               <ResetWorkspaceButton
                 fullWidth
@@ -197,11 +178,11 @@ export default function DashboardPage() {
             </div>
 
             <div className="rounded-[28px] border border-cyan-300/15 bg-cyan-300/8 p-5">
-              <p className="font-medium text-white">Standar pengalaman yang dituju</p>
+              <p className="font-medium text-white">Yang diprioritaskan</p>
               <div className="mt-3 space-y-2 text-sm text-white/65">
-                <p>Upload harus terasa jelas, bukan teknis dan membingungkan.</p>
-                <p>Pengguna harus tahu status project dalam satu pandangan.</p>
-                <p>Clip terbaik harus bisa ditemukan tanpa membuka banyak panel.</p>
+                <p>Upload harus terlihat hidup dalam beberapa detik.</p>
+                <p>Clip terbaik harus muncul cepat dan mudah dipilih.</p>
+                <p>Download MP4 harus jadi tujuan akhir yang paling jelas.</p>
               </div>
             </div>
           </Card>
@@ -266,40 +247,18 @@ export default function DashboardPage() {
 
           <Card className="space-y-5">
             <div>
-              <p className="font-medium text-white">Kenapa dashboard ini terasa lebih ringan</p>
-              <p className="text-sm text-white/55">
-                Hirarki visual dibuat lebih jelas: kondisi saat ini, langkah berikutnya, lalu detail pendukung.
-              </p>
+              <p className="font-medium text-white">Flow kerja yang sedang dipakai</p>
+              <p className="text-sm text-white/55">Semua fitur yang tersisa sekarang diarahkan untuk menyokong alur inti, bukan menambah beban baca.</p>
             </div>
 
-            <div className="grid gap-4">
-              {workflowHighlights.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <div key={item.title} className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]">
-                        <Icon className="h-5 w-5 text-cyan-200" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-white">{item.title}</p>
-                        <p className="mt-2 text-sm leading-6 text-white/60">{item.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <WorkflowStepper current={project ? (project.status === "ready" ? "review" : "upload") : "upload"} />
 
             <div className="grid gap-3 md:grid-cols-2">
               {[
-                "Transcript dengan word timestamps",
-                "Penjelasan hook dan ranking clip",
-                "Preview platform dan variasi caption",
-                "Export bundle tanpa ribet",
-                "Mode lokal untuk prototipe",
-                "Arahan seri konten dari insight"
+                "Review memakai ranking viral score",
+                "Edit per clip tetap tersedia",
+                "Preview vertical tetap satu klik",
+                "Download MP4 jadi aksi utama"
               ].map((item) => (
                 <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/70">
                   {item}
@@ -343,16 +302,6 @@ export default function DashboardPage() {
             </Card>
           )}
         </section>
-
-        {project ? (
-          <section id="analytics" className="scroll-mt-6 space-y-4">
-            <div>
-              <p className="section-eyebrow">Insight</p>
-              <h2 className="mt-3 text-3xl font-semibold text-white">Analitik tetap ada, tapi sekarang lebih mudah dicerna.</h2>
-            </div>
-            <AnalyticsDashboard project={project} />
-          </section>
-        ) : null}
 
         <section id="settings" className="scroll-mt-6 space-y-4">
           <div>

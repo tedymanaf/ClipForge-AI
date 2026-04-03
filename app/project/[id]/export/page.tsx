@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
+import { WorkflowStepper } from "@/components/WorkflowStepper";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getProjectPrimaryRoute, isProjectReadyForReview } from "@/lib/project-routing";
 import { ExportCenter } from "@/modules/export/ExportCenter";
@@ -86,7 +89,16 @@ export default function ExportPage() {
   }
 
   return (
-    <AppShell title={`Export ${project.name}`} eyebrow="Pusat Distribusi">
+    <AppShell
+      title={`Download MP4 ${project.name}`}
+      eyebrow="Download"
+      actions={
+        <Link href={`/project/${project.id}/clip/${clip.id}`}>
+          <Button variant="outline">Kembali ke Edit</Button>
+        </Link>
+      }
+    >
+      <WorkflowStepper current="download" />
       <ExportCenter
         clip={clip}
         metadata={project.metadata[clip.id]}

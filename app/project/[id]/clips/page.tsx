@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Download, PencilLine } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
-import { AnalyticsDashboard } from "@/modules/analytics/AnalyticsDashboard";
 import { AppShell } from "@/components/AppShell";
 import { ClipCard } from "@/components/ClipCard";
+import { WorkflowStepper } from "@/components/WorkflowStepper";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getProjectPrimaryRoute, isProjectReadyForReview } from "@/lib/project-routing";
@@ -74,14 +77,66 @@ export default function ClipsPage() {
   const clips = project.clips
     .filter((clip) => clip.title.toLowerCase().includes(query.toLowerCase()))
     .sort((a, b) => b.viralScore - a.viralScore);
+  const bestClip = clips[0] ?? project.clips[0];
 
   return (
-    <AppShell title={`Review Clip ${project.name}`} eyebrow="Review Clip">
+    <AppShell
+      title={`Review Clip ${project.name}`}
+      eyebrow="Review Clip"
+      actions={
+        bestClip ? (
+          <>
+            <Link href={`/project/${project.id}/clip/${bestClip.id}`}>
+              <Button variant="outline" className="gap-2">
+                <PencilLine className="h-4 w-4" />
+                Edit Clip Terbaik
+              </Button>
+            </Link>
+            <Link href={`/project/${project.id}/export?clipId=${bestClip.id}`}>
+              <Button className="gap-2">
+                <Download className="h-4 w-4" />
+                Download MP4
+              </Button>
+            </Link>
+          </>
+        ) : null
+      }
+    >
+      <WorkflowStepper current="review" />
+
+      {bestClip ? (
+        <Card className="grid gap-5 lg:grid-cols-[1fr_auto]">
+          <div>
+            <p className="section-eyebrow">Clip Terbaik Saat Ini</p>
+            <h2 className="mt-3 text-2xl font-semibold text-white">{bestClip.title}</h2>
+            <p className="mt-3 text-sm leading-6 text-white/60">{bestClip.description}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Badge>Viral Score {bestClip.viralScore}</Badge>
+              <Badge>{bestClip.durationSec}s</Badge>
+              <Badge className="capitalize">{bestClip.platforms[0] ?? "youtube"}</Badge>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 lg:flex-col">
+            <Link href={`/project/${project.id}/clip/${bestClip.id}`}>
+              <Button variant="outline" className="gap-2">
+                Edit Sekarang
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href={`/project/${project.id}/export?clipId=${bestClip.id}`}>
+              <Button className="gap-2">
+                Download MP4
+                <Download className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      ) : null}
+
       <Card className="grid gap-4 md:grid-cols-[1fr_auto]">
         <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari judul clip atau hook" />
         <div className="flex flex-wrap gap-2">
           <Badge>Urut: Viral Score</Badge>
-          <Badge>Filter: Semua platform</Badge>
           <Badge>{project.clips.length} clip</Badge>
         </div>
       </Card>
@@ -91,8 +146,6 @@ export default function ClipsPage() {
           <ClipCard key={clip.id} clip={clip} project={project} />
         ))}
       </div>
-
-      <AnalyticsDashboard project={project} />
     </AppShell>
   );
 }
