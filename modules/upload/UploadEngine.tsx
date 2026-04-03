@@ -541,21 +541,6 @@ export function UploadEngine() {
           })}
         </div>
 
-        {queue.length > 0 ? (
-          queue.map((item) => (
-            <div key={item.id} className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-white">{item.name}</p>
-                  <p className="text-sm text-white/45">{formatBytes(item.sizeBytes)}</p>
-                </div>
-                <Badge>{item.status}</Badge>
-              </div>
-              <Progress className="mt-4" value={item.progress} />
-            </div>
-          ))
-        ) : null}
-
         <div className="rounded-[28px] border border-cyan-300/15 bg-cyan-300/8 p-5">
           <p className="font-medium text-white">Flow baru yang dituju</p>
           <div className="mt-3 space-y-2 text-sm text-white/65">
