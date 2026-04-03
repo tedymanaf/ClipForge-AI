@@ -15,14 +15,15 @@ import { selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
 export default function ClipsPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const projectId = typeof params.id === "string" ? params.id : "";
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
-  const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
+  const project = useMemo(() => selectProject(projects, projectId), [projects, projectId]);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    if (!hydrated) {
+    if (!hydrated || !projectId) {
       return;
     }
 
@@ -43,9 +44,9 @@ export default function ClipsPage() {
     if (!isProjectReadyForReview(project)) {
       router.replace(getProjectPrimaryRoute(project));
     }
-  }, [hydrated, project, projects, router, seedDemoProjects]);
+  }, [hydrated, projectId, project, projects, router, seedDemoProjects]);
 
-  if (!hydrated) {
+  if (!hydrated || !projectId) {
     return (
       <AppShell title="Memuat project" eyebrow="Review Clip">
         <Card>

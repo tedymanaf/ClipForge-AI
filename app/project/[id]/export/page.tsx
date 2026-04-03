@@ -13,10 +13,11 @@ import { selectProject, useClipForgeStore } from "@/store/useClipForgeStore";
 export default function ExportPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const projectId = typeof params.id === "string" ? params.id : "";
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
-  const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
+  const project = useMemo(() => selectProject(projects, projectId), [projects, projectId]);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const clip = useMemo(
     () => (selectedClipId ? selectClip(project, selectedClipId) : project?.clips[0]),
@@ -24,7 +25,7 @@ export default function ExportPage() {
   );
 
   useEffect(() => {
-    if (!hydrated) {
+    if (!hydrated || !projectId) {
       return;
     }
 
@@ -66,9 +67,9 @@ export default function ExportPage() {
         router.replace(`/project/${project.id}/export?clipId=${fallbackClip.id}`);
       }
     }
-  }, [hydrated, project, projects, router, seedDemoProjects]);
+  }, [hydrated, projectId, project, projects, router, seedDemoProjects]);
 
-  if (!hydrated) {
+  if (!hydrated || !projectId) {
     return (
       <AppShell title="Memuat export" eyebrow="Pusat Distribusi">
         <Card>

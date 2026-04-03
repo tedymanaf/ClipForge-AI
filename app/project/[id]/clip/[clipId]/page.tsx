@@ -17,14 +17,16 @@ import { selectClip, selectProject, useClipForgeStore } from "@/store/useClipFor
 export default function ClipDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string; clipId: string }>();
+  const projectId = typeof params.id === "string" ? params.id : "";
+  const clipId = typeof params.clipId === "string" ? params.clipId : "";
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
-  const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
-  const clip = useMemo(() => selectClip(project, params.clipId), [project, params.clipId]);
+  const project = useMemo(() => selectProject(projects, projectId), [projects, projectId]);
+  const clip = useMemo(() => selectClip(project, clipId), [project, clipId]);
 
   useEffect(() => {
-    if (!hydrated) {
+    if (!hydrated || !projectId || !clipId) {
       return;
     }
 
@@ -62,9 +64,9 @@ export default function ClipDetailPage() {
         router.replace(`/project/${project.id}/clip/${fallbackClip.id}`);
       }
     }
-  }, [clip, hydrated, project, projects, router, seedDemoProjects]);
+  }, [clip, clipId, hydrated, projectId, project, projects, router, seedDemoProjects]);
 
-  if (!hydrated) {
+  if (!hydrated || !projectId || !clipId) {
     return (
       <AppShell title="Memuat clip" eyebrow="Editor Manual">
         <Card>

@@ -18,18 +18,19 @@ import { selectProject } from "@/store/useClipForgeStore";
 export default function ProcessingPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const projectId = typeof params.id === "string" ? params.id : "";
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const updateProject = useClipForgeStore((state) => state.updateProject);
   const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
-  const project = useMemo(() => selectProject(projects, params.id), [projects, params.id]);
+  const project = useMemo(() => selectProject(projects, projectId), [projects, projectId]);
   const initializedProjectRef = useRef<string | null>(null);
   const timelineSteps = project?.processingSteps?.length ? project.processingSteps : getProcessingSnapshot(8).steps;
   const heroThumbnail = project?.asset?.thumbnail ?? "";
   const liveClips = project?.clips ?? [];
 
   useEffect(() => {
-    if (!hydrated) {
+    if (!hydrated || !projectId) {
       return;
     }
 
@@ -45,14 +46,13 @@ export default function ProcessingPage() {
     if (!project) {
       router.replace(getProjectPrimaryRoute(projects[0]));
     }
-  }, [hydrated, project, projects, router, seedDemoProjects]);
+  }, [hydrated, projectId, project, projects, router, seedDemoProjects]);
 
   useEffect(() => {
-    if (!hydrated || !params.id) {
+    if (!hydrated || !projectId) {
       return;
     }
 
-    const projectId = params.id;
     let analyzing = false;
 
     const ensureInitialized = () => {
@@ -130,9 +130,9 @@ export default function ProcessingPage() {
     ensureInitialized();
 
     return () => window.clearInterval(interval);
-  }, [hydrated, params.id, updateProject]);
+  }, [hydrated, projectId, updateProject]);
 
-  if (!hydrated) {
+  if (!hydrated || !projectId) {
     return (
       <AppShell title="Memuat project" eyebrow="Status Pipeline">
         <Card>
