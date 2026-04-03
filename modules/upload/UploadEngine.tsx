@@ -155,23 +155,23 @@ export function UploadEngine() {
       return descriptor;
     }
 
-    try {
-      const formData = new FormData();
-      formData.append("file", descriptor.file);
-      const response = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!response.ok) {
-        return descriptor;
-      }
+    const formData = new FormData();
+    formData.append("file", descriptor.file);
+    const response = await fetch("/api/upload", { method: "POST", body: formData });
 
-      const payload = (await response.json()) as { path?: string };
-      return {
-        ...descriptor,
-        path: payload.path ?? descriptor.path
-      };
-    } catch {
-      // Local-first flow should remain usable even if the route is unavailable.
-      return descriptor;
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(
+        payload.error || "Video gagal diunggah ke server. Preview dan export butuh source video asli, jadi upload harus berhasil dulu."
+      );
     }
+
+    const payload = (await response.json()) as { id?: string; path?: string };
+    return {
+      ...descriptor,
+      serverAssetId: payload.id ?? descriptor.serverAssetId,
+      path: payload.path ?? descriptor.path
+    };
   }
 
   async function processDescriptor(descriptor: UploadDescriptor) {
@@ -184,17 +184,22 @@ export function UploadEngine() {
     };
 
     addQueueItem(queueItem);
-    for (const progress of [15, 34, 58, 76, 92]) {
-      updateQueueItem(descriptor.id, { progress });
-      await new Promise((resolve) => setTimeout(resolve, 140));
+    try {
+      for (const progress of [15, 34, 58, 76, 92]) {
+        updateQueueItem(descriptor.id, { progress });
+        await new Promise((resolve) => setTimeout(resolve, 140));
+      }
+
+      const persistedDescriptor = await bestEffortPersistUpload(descriptor);
+      const project = createProjectFromUpload(persistedDescriptor);
+      updateQueueItem(descriptor.id, { progress: 100, status: "queued" });
+      setTimeout(() => removeQueueItem(descriptor.id), 1000);
+      return project;
+    } catch (error) {
+      updateQueueItem(descriptor.id, { status: "error" });
+      setTimeout(() => removeQueueItem(descriptor.id), 1800);
+      throw error;
     }
-
-    const persistedDescriptor = await bestEffortPersistUpload(descriptor);
-
-    const project = createProjectFromUpload(persistedDescriptor);
-    updateQueueItem(descriptor.id, { progress: 100, status: "queued" });
-    setTimeout(() => removeQueueItem(descriptor.id), 1000);
-    return project;
   }
 
   async function handleFiles(files: FileList | File[]) {
@@ -231,6 +236,12 @@ export function UploadEngine() {
       if (firstProject) {
         router.push(`/project/${firstProject.id}/processing`);
       }
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Upload video ke server gagal. Project belum dibuat supaya tidak berakhir di preview logo saja."
+      );
     } finally {
       setWorking(false);
     }

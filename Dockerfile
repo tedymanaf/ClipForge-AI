@@ -8,7 +8,8 @@ ENV HOME=/home/node \
   PATH=/home/node/.local/bin:$PATH \
   PORT=7860 \
   HOSTNAME=0.0.0.0 \
-  NEXT_TELEMETRY_DISABLED=1
+  NEXT_TELEMETRY_DISABLED=1 \
+  CLIPFORGE_STORAGE_DIR=/tmp/clipforge
 
 WORKDIR $HOME/app
 
@@ -18,7 +19,8 @@ RUN npm install --no-audit --no-fund
 COPY --chown=node:node . .
 
 RUN npm run build \
-  && mkdir -p storage/uploads
+  && mkdir -p /tmp/clipforge/uploads \
+  && chown -R node:node /tmp/clipforge /home/node/app
 
 USER node
 

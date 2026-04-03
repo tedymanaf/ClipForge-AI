@@ -1,43 +1,29 @@
 import { createReadStream } from "fs";
-import { access, readdir, stat } from "fs/promises";
-import { join, resolve, sep } from "path";
+import { stat } from "fs/promises";
 import { Readable } from "stream";
 
 import { NextResponse } from "next/server";
 
+import { findStoredFileByName, getReadableUploadsDirs } from "@/lib/storage";
+
 export const runtime = "nodejs";
-
-function getStorageDir() {
-  return resolve(process.cwd(), "storage", "uploads");
-}
-
-function isInsideStorage(filePath: string) {
-  const storageDir = getStorageDir();
-  const normalizedFilePath = resolve(filePath).toLowerCase();
-  const normalizedStorageDir = storageDir.toLowerCase();
-
-  return normalizedFilePath === normalizedStorageDir || normalizedFilePath.startsWith(`${normalizedStorageDir}${sep}`.toLowerCase());
-}
-
-async function exists(filePath: string) {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 async function resolveMediaPath(request: Request) {
   const url = new URL(request.url);
-  const storageDir = getStorageDir();
   const requestedFileId = url.searchParams.get("file")?.trim();
   const requestedName = url.searchParams.get("name")?.trim();
 
   if (requestedFileId) {
-    const candidate = resolve(join(storageDir, requestedFileId));
-    if (isInsideStorage(candidate) && await exists(candidate)) {
-      return candidate;
+    const { join } = await import("path");
+    for (const uploadsDir of await getReadableUploadsDirs()) {
+      const candidate = join(uploadsDir, requestedFileId);
+
+      try {
+        await stat(candidate);
+        return candidate;
+      } catch {
+        // Continue scanning other upload roots.
+      }
     }
   }
 
@@ -45,20 +31,7 @@ async function resolveMediaPath(request: Request) {
     return null;
   }
 
-  try {
-    const entries = await readdir(storageDir);
-    const safeName = requestedName.replace(/[^a-zA-Z0-9._-]+/g, "_");
-    const matched = entries.find((entry) => entry === safeName || entry.endsWith(`-${safeName}`) || entry.includes(safeName));
-
-    if (!matched) {
-      return null;
-    }
-
-    const candidate = resolve(join(storageDir, matched));
-    return isInsideStorage(candidate) ? candidate : null;
-  } catch {
-    return null;
-  }
+  return findStoredFileByName(requestedName);
 }
 
 function getContentType(filePath: string) {

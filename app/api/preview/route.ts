@@ -1,11 +1,12 @@
 import { spawn } from "child_process";
-import { access, mkdtemp, readFile, readdir, rm, writeFile } from "fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { basename, join } from "path";
 
 import { NextResponse } from "next/server";
 
 import { PLATFORM_PRESETS } from "@/lib/ffmpeg";
+import { resolveStoredAssetPath } from "@/lib/storage";
 import { createId } from "@/lib/utils";
 import { ClipCandidate, Platform, TranscriptSegment, VideoAsset } from "@/types";
 
@@ -148,39 +149,6 @@ async function runFfmpeg(args: string[]) {
       reject(new Error(stderr || `ffmpeg exited with code ${code}`));
     });
   });
-}
-
-async function fileExists(filePath: string | undefined) {
-  if (!filePath) {
-    return false;
-  }
-
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function resolveStoredAssetPath(asset?: VideoAsset) {
-  if (await fileExists(asset?.path)) {
-    return asset?.path;
-  }
-
-  if (!asset?.name) {
-    return null;
-  }
-
-  const storageDir = join(process.cwd(), "storage", "uploads");
-  try {
-    const entries = await readdir(storageDir);
-    const safeName = asset.name.replace(/[^a-zA-Z0-9._-]+/g, "_");
-    const matched = entries.find((entry) => entry.endsWith(`-${safeName}`) || entry.includes(safeName));
-    return matched ? join(storageDir, matched) : null;
-  } catch {
-    return null;
-  }
 }
 
 async function createSolidVideo(outputPath: string, width: number, height: number, fps: number, durationSec: number) {

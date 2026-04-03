@@ -161,6 +161,7 @@ export interface QueueItem {
 
 export interface UploadDescriptor {
   id: string;
+  serverAssetId?: string;
   name: string;
   file?: File;
   path?: string;

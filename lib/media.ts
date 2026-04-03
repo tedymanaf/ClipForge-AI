@@ -1,15 +1,7 @@
+import { extractStoredFileId } from "@/lib/storage-id";
 import { VideoAsset } from "@/types";
 
-function extractStoredFileId(asset: Pick<VideoAsset, "path" | "name">) {
-  if (!asset.path) {
-    return undefined;
-  }
-
-  const segments = asset.path.split(/[\\/]+/).filter(Boolean);
-  return segments[segments.length - 1];
-}
-
-export function buildAssetMediaUrl(asset: Pick<VideoAsset, "path" | "name">) {
+export function buildAssetMediaUrl(asset: Pick<VideoAsset, "id" | "path" | "name">) {
   const fileId = extractStoredFileId(asset);
   const params = new URLSearchParams();
 

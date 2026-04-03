@@ -477,7 +477,7 @@ export const useClipForgeStore = create<ClipForgeState>()(
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           asset: {
-            id: createId("asset"),
+            id: upload.serverAssetId ?? upload.path?.split(/[\\/]+/).filter(Boolean).at(-1) ?? createId("asset"),
             name: upload.name,
             source: upload.source,
             path: upload.path,

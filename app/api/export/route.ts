@@ -1,5 +1,5 @@
 import { spawn } from "child_process";
-import { access, mkdtemp, readFile, readdir, rm, writeFile } from "fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { basename, join } from "path";
 
@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { buildExportArtifacts } from "@/modules/clipper/ClipGenerator";
 import { generateMetadataBundle } from "@/modules/metadata/MetadataEngine";
 import { PLATFORM_PRESETS } from "@/lib/ffmpeg";
+import { resolveStoredAssetPath } from "@/lib/storage";
 import { createId } from "@/lib/utils";
 import { CaptionCue, CaptionStyleId, ClipCandidate, MetadataBundle, ThumbnailVariant, VideoAsset } from "@/types";
 
@@ -388,26 +389,6 @@ async function fileExists(filePath: string | undefined) {
     return true;
   } catch {
     return false;
-  }
-}
-
-async function resolveStoredAssetPath(asset?: VideoAsset) {
-  if (await fileExists(asset?.path)) {
-    return asset?.path;
-  }
-
-  if (!asset?.name) {
-    return null;
-  }
-
-  const storageDir = join(process.cwd(), "storage", "uploads");
-  try {
-    const entries = await readdir(storageDir);
-    const safeName = asset.name.replace(/[^a-zA-Z0-9._-]+/g, "_");
-    const matched = entries.find((entry) => entry.endsWith(`-${safeName}`) || entry.includes(safeName));
-    return matched ? join(storageDir, matched) : null;
-  } catch {
-    return null;
   }
 }
 
