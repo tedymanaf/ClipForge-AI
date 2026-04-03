@@ -352,7 +352,7 @@ export function UploadEngine() {
 
   const canUpload = !working;
   const recentProjects = useMemo(() => projects.slice(0, 3), [projects]);
-  const displayStage = working ? processingStage : "idle";
+  const displayStage = working ? processingStage : error ? "error" : "idle";
   const displayProgress = working ? Math.max(processingProgress, 4) : 0;
   const stageCategory = getStageCategory(displayStage);
 
@@ -661,6 +661,8 @@ export function UploadEngine() {
             ? "Hampir selesai. ffmpeg sedang memotong clip MP4 final untuk direview."
             : displayStage === "ready"
               ? "Semua langkah utama selesai. Clip kandidat siap dibuka."
+              : displayStage === "error"
+                ? "Upload terakhir belum berhasil. Perbaiki key AI atau pilih video baru untuk mencoba lagi."
               : "Belum ada proses aktif. Pilih satu video untuk memulai.";
   const uploadMetrics =
     displayStage === "uploading" && uploadTelemetry
@@ -811,7 +813,9 @@ export function UploadEngine() {
         <div className="rounded-[28px] border border-white/10 bg-black/20 p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="font-medium text-white">{activeUploadName ?? "Belum ada video aktif"}</p>
+              <p className="font-medium text-white">
+                {displayStage === "idle" ? "Belum ada video aktif" : activeUploadName ?? "Belum ada video aktif"}
+              </p>
               <p className="mt-2 text-sm leading-6 text-white/60">{flowMessage}</p>
               <p className="mt-2 text-sm leading-6 text-white/45">{stageGuidance}</p>
               {currentProjectId ? (
@@ -820,7 +824,7 @@ export function UploadEngine() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge>{stageCategory}</Badge>
-              <Badge>{displayStage === "idle" ? "siap" : displayStage}</Badge>
+              {displayStage !== "idle" ? <Badge>{displayStage}</Badge> : null}
               {working ? (
                 <Button type="button" variant="outline" size="sm" className="gap-2" onClick={cancelActiveUpload}>
                   <XCircle className="h-4 w-4" />
@@ -844,7 +848,7 @@ export function UploadEngine() {
         <div className="grid gap-3">
           {SIMPLE_FLOW.map((step, index) => {
             const complete = index < activeIndex || displayStage === "ready";
-            const active = index === activeIndex && displayStage !== "ready";
+            const active = index === activeIndex && displayStage !== "ready" && displayStage !== "error";
 
             return (
               <div key={step.id} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">

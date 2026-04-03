@@ -48,6 +48,16 @@ export default function DashboardPage() {
       : processingStage === "transcribing" || processingStage === "scoring" || processingStage === "cutting"
         ? "proses AI"
         : "siap";
+  const workflowStep =
+    hasActiveProcessing
+      ? "upload"
+      : project
+        ? project.status === "ready"
+          ? "review"
+          : project.status === "error"
+            ? null
+            : "upload"
+        : null;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -160,7 +170,7 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              <WorkflowStepper current={project ? (project.status === "ready" ? "review" : "upload") : "upload"} />
+              <WorkflowStepper current={workflowStep} />
             </div>
           </Card>
 
@@ -311,7 +321,7 @@ export default function DashboardPage() {
               <p className="text-sm text-white/55">Semua fitur yang tersisa sekarang diarahkan untuk menyokong alur inti, bukan menambah beban baca.</p>
             </div>
 
-            <WorkflowStepper current={project ? (project.status === "ready" ? "review" : "upload") : "upload"} />
+            <WorkflowStepper current={workflowStep} />
 
             <div className="grid gap-3 md:grid-cols-2">
               {[

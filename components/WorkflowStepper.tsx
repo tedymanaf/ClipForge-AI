@@ -15,7 +15,7 @@ export function WorkflowStepper({
   current,
   className
 }: {
-  current: (typeof WORKFLOW_STEPS)[number]["id"];
+  current: (typeof WORKFLOW_STEPS)[number]["id"] | null;
   className?: string;
 }) {
   const currentIndex = WORKFLOW_STEPS.findIndex((step) => step.id === current);
@@ -24,7 +24,7 @@ export function WorkflowStepper({
     <div className={cn("grid gap-3 md:grid-cols-4", className)}>
       {WORKFLOW_STEPS.map((step, index) => {
         const complete = index < currentIndex;
-        const active = index === currentIndex;
+        const active = currentIndex >= 0 && index === currentIndex;
 
         return (
           <div
@@ -46,7 +46,7 @@ export function WorkflowStepper({
               <div>
                 <p className="text-sm font-medium text-white">{step.label}</p>
                 <p className="text-xs text-white/45">
-                  {complete ? "Selesai" : active ? "Sedang aktif" : "Berikutnya"}
+                  {complete ? "Selesai" : active ? "Sedang aktif" : currentIndex < 0 ? "Menunggu" : "Berikutnya"}
                 </p>
               </div>
             </div>
