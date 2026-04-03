@@ -222,6 +222,10 @@ def resolve_openai_client(api_key: Optional[str]) -> OpenAI:
     return OpenAI(api_key=effective_key)
 
 
+def has_openai_key(api_key: Optional[str]) -> bool:
+    return bool(api_key or os.getenv("OPENAI_API_KEY"))
+
+
 def model_dump(payload: Any) -> Dict[str, Any]:
     if hasattr(payload, "model_dump"):
         return payload.model_dump()
@@ -231,6 +235,12 @@ def model_dump(payload: Any) -> Dict[str, Any]:
 
 
 def transcribe_audio(audio_path: Path, duration_sec: float, api_key: Optional[str]) -> Dict[str, Any]:
+    if not has_openai_key(api_key):
+        return {
+            "text": "Fallback transcript generated because OPENAI_API_KEY is not configured.",
+            "segments": build_duration_segments(duration_sec),
+        }
+
     client = resolve_openai_client(api_key)
     with audio_path.open("rb") as audio_file:
         response = client.audio.transcriptions.create(
@@ -287,6 +297,35 @@ def build_fallback_segments(text: str, duration_sec: float) -> List[Dict[str, An
     return segments
 
 
+def build_duration_segments(duration_sec: float) -> List[Dict[str, Any]]:
+    safe_duration = max(1.0, duration_sec)
+    window = min(60.0, max(1.0, safe_duration / 3))
+    segments: List[Dict[str, Any]] = []
+
+    for index in range(3):
+        start = round(index * window, 2)
+        if start >= safe_duration:
+            break
+
+        end = min(safe_duration, start + window)
+
+        if end <= start:
+            end = min(safe_duration, start + 0.75)
+
+        segments.append(
+            {
+                "start": round(start, 2),
+                "end": round(end, 2),
+                "text": f"Fallback segment {index + 1} generated from video timing because OpenAI API key is not set."
+            }
+        )
+
+        if end >= safe_duration:
+            break
+
+    return segments
+
+
 def build_transcript_prompt(segments: List[Dict[str, Any]]) -> str:
     lines = []
     for segment in segments:
@@ -308,6 +347,9 @@ def heuristic_clips_from_segments(segments: List[Dict[str, Any]], duration_sec: 
     for index, segment in enumerate(ranked[:3]):
         start_sec = max(0.0, segment["start"])
         end_sec = min(duration_sec, max(start_sec + 4.0, min(segment["end"], start_sec + 60.0)))
+        if end_sec <= start_sec:
+            continue
+
         clips.append(
             {
                 "start_sec": round(start_sec, 2),
@@ -318,10 +360,25 @@ def heuristic_clips_from_segments(segments: List[Dict[str, Any]], duration_sec: 
             }
         )
 
+    if not clips:
+        fallback_end = min(max(duration_sec, 1.0), 4.0)
+        clips.append(
+            {
+                "start_sec": 0.0,
+                "end_sec": round(fallback_end, 2),
+                "score": 70,
+                "hook_reason": "Fallback clip generated from the available source duration.",
+                "caption_suggestion": "Fallback clip generated because the source video is very short."
+            }
+        )
+
     return clips
 
 
 def score_transcript_segments(segments: List[Dict[str, Any]], duration_sec: float, api_key: Optional[str]) -> List[Dict[str, Any]]:
+    if not has_openai_key(api_key):
+        return heuristic_clips_from_segments(segments, duration_sec)
+
     client = resolve_openai_client(api_key)
     transcript_prompt = build_transcript_prompt(segments)
     prompt = (
