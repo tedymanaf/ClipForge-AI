@@ -6,7 +6,7 @@ colorTo: blue
 sdk: docker
 app_port: 7860
 pinned: false
-short_description: Next.js + FastAPI short-form clipper for Hugging Face Spaces.
+short_description: AI short-form clipper with Next.js and FastAPI.
 ---
 
 # ClipForge AI
