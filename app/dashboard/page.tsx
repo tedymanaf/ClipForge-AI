@@ -42,6 +42,12 @@ export default function DashboardPage() {
     processingStage === "transcribing" ||
     processingStage === "scoring" ||
     processingStage === "cutting";
+  const activeProcessCategory =
+    processingStage === "uploading"
+      ? "upload jaringan"
+      : processingStage === "transcribing" || processingStage === "scoring" || processingStage === "cutting"
+        ? "proses AI"
+        : "siap";
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -169,15 +175,20 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {hasActiveProcessing ? (
                 <div className="rounded-[24px] border border-cyan-300/20 bg-cyan-300/8 p-4">
-                  <p className="font-medium text-white">
-                    {processingStage === "uploading"
-                      ? "Upload masih berjalan"
-                      : processingStage === "transcribing"
-                        ? "Backend sedang mentranskripsi"
-                        : processingStage === "scoring"
-                          ? "AI sedang memilih clip terbaik"
-                          : "Backend sedang memotong MP4"}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-white">
+                      {processingStage === "uploading"
+                        ? "Upload masih berjalan"
+                        : processingStage === "transcribing"
+                          ? "Backend sedang mentranskripsi"
+                          : processingStage === "scoring"
+                            ? "AI sedang memilih clip terbaik"
+                            : "Backend sedang memotong MP4"}
+                    </p>
+                    <Badge className="w-fit border-cyan-300/20 bg-cyan-300/10 text-cyan-100">
+                      {activeProcessCategory}
+                    </Badge>
+                  </div>
                   <p className="mt-2 text-sm leading-6 text-white/60">
                     {activeProject
                       ? `${activeProject.name} sedang diproses. Progress saat ini ${processingProgress}%.`

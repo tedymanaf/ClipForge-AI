@@ -41,6 +41,13 @@ type StatusApiResponse = {
   error?: string;
 };
 
+type UploadTelemetry = {
+  loadedBytes: number;
+  totalBytes: number;
+  speedBytesPerSec: number;
+  etaSec: number | null;
+};
+
 type ClipsApiResponse = {
   project_id: string;
   clips: Array<{
@@ -69,6 +76,44 @@ function createFallbackThumbnail(label: string) {
       <text x="54" y="340" fill="#FFFFFF" font-size="54" font-family="Arial, sans-serif">${label}</text>
     </svg>
   `);
+}
+
+function formatEtaLabel(etaSec: number | null) {
+  if (etaSec === null || !Number.isFinite(etaSec)) {
+    return "Menghitung...";
+  }
+
+  if (etaSec <= 1) {
+    return "< 1 dtk";
+  }
+
+  if (etaSec < 60) {
+    return `${Math.ceil(etaSec)} dtk`;
+  }
+
+  const minutes = Math.floor(etaSec / 60);
+  const seconds = Math.ceil(etaSec % 60);
+  return seconds > 0 ? `${minutes} mnt ${seconds} dtk` : `${minutes} mnt`;
+}
+
+function getStageCategory(stage: BackendProcessingStage | "idle") {
+  if (stage === "uploading") {
+    return "upload jaringan";
+  }
+
+  if (stage === "transcribing" || stage === "scoring" || stage === "cutting") {
+    return "proses AI";
+  }
+
+  if (stage === "ready") {
+    return "siap review";
+  }
+
+  if (stage === "error") {
+    return "perlu perhatian";
+  }
+
+  return "siap";
 }
 
 function isAcceptedFile(file: File) {
@@ -171,7 +216,7 @@ async function extractVideoMetadata(file: File): Promise<UploadDescriptor> {
 
 function uploadFileWithProgress(
   file: File,
-  onProgress: (progress: number) => void,
+  onProgress: (progress: number, loadedBytes: number, totalBytes: number) => void,
   xhrRef: React.MutableRefObject<XMLHttpRequest | null>
 ) {
   return new Promise<UploadApiResponse>((resolve, reject) => {
@@ -185,7 +230,11 @@ function uploadFileWithProgress(
         return;
       }
 
-      onProgress(Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100))));
+      onProgress(
+        Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100))),
+        event.loaded,
+        event.total
+      );
     };
 
     xhr.onload = () => {
@@ -281,6 +330,8 @@ export function UploadEngine() {
   const [flowMessage, setFlowMessage] = useState("Pilih satu video, lalu sistem akan langsung memproses dan membuka hasil review.");
   const [activeUploadName, setActiveUploadName] = useState<string | null>(null);
   const [activeUploadSizeBytes, setActiveUploadSizeBytes] = useState<number | null>(null);
+  const [uploadTelemetry, setUploadTelemetry] = useState<UploadTelemetry | null>(null);
+  const uploadStartedAtRef = useRef<number | null>(null);
 
   const projects = useClipForgeStore((state) => state.projects);
   const queue = useClipForgeStore((state) => state.queue);
@@ -303,17 +354,20 @@ export function UploadEngine() {
   const recentProjects = useMemo(() => projects.slice(0, 3), [projects]);
   const displayStage = working ? processingStage : "idle";
   const displayProgress = working ? Math.max(processingProgress, 4) : 0;
+  const stageCategory = getStageCategory(displayStage);
 
   function resetLocalFlow(message?: string) {
     setWorking(false);
     setError(null);
     setActiveUploadName(null);
     setActiveUploadSizeBytes(null);
+    setUploadTelemetry(null);
     setFlowMessage(message ?? "Pilih satu video, lalu sistem akan langsung memproses dan membuka hasil review.");
     activeProjectIdRef.current = null;
     activeQueueIdRef.current = null;
     uploadXhrRef.current = null;
     pollAbortRef.current = null;
+    uploadStartedAtRef.current = null;
     resetProcessingState();
   }
 
@@ -425,6 +479,13 @@ export function UploadEngine() {
     setError(null);
     setActiveUploadName(descriptor.name);
     setActiveUploadSizeBytes(descriptor.sizeBytes);
+    setUploadTelemetry({
+      loadedBytes: 0,
+      totalBytes: descriptor.sizeBytes,
+      speedBytesPerSec: 0,
+      etaSec: null
+    });
+    uploadStartedAtRef.current = Date.now();
     setFlowMessage("Video sedang diunggah ke backend FastAPI.");
     setProcessingStatus("uploading", 0);
     setCurrentProjectId(null);
@@ -443,11 +504,36 @@ export function UploadEngine() {
     try {
       const uploadPayload = await uploadFileWithProgress(
         descriptor.file,
-        (progress) => {
+        (progress, loadedBytes, totalBytes) => {
+          const startedAt = uploadStartedAtRef.current ?? Date.now();
+          const elapsedSec = Math.max((Date.now() - startedAt) / 1000, 0.001);
+          const speedBytesPerSec = loadedBytes / elapsedSec;
+          const etaSec =
+            loadedBytes < totalBytes && speedBytesPerSec > 0
+              ? (totalBytes - loadedBytes) / speedBytesPerSec
+              : 0;
+
           setProcessingStatus("uploading", progress);
           updateQueueItem(descriptor.id, { progress, status: "uploading" });
+          setUploadTelemetry({
+            loadedBytes,
+            totalBytes,
+            speedBytesPerSec,
+            etaSec
+          });
         },
         uploadXhrRef
+      );
+
+      setUploadTelemetry((current) =>
+        current
+          ? {
+              ...current,
+              loadedBytes: current.totalBytes,
+              speedBytesPerSec: current.speedBytesPerSec,
+              etaSec: 0
+            }
+          : current
       );
 
       const project = createProjectFromUpload({
@@ -576,6 +662,16 @@ export function UploadEngine() {
             : displayStage === "ready"
               ? "Semua langkah utama selesai. Clip kandidat siap dibuka."
               : "Belum ada proses aktif. Pilih satu video untuk memulai.";
+  const uploadMetrics =
+    displayStage === "uploading" && uploadTelemetry
+      ? [
+          `Terkirim ${formatBytes(uploadTelemetry.loadedBytes)} / ${formatBytes(uploadTelemetry.totalBytes)}`,
+          uploadTelemetry.speedBytesPerSec > 0
+            ? `Kecepatan ${formatBytes(uploadTelemetry.speedBytesPerSec)}/s`
+            : "Kecepatan mengukur...",
+          `Estimasi sisa ${formatEtaLabel(uploadTelemetry.etaSec)}`
+        ]
+      : null;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -723,6 +819,7 @@ export function UploadEngine() {
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <Badge>{stageCategory}</Badge>
               <Badge>{displayStage === "idle" ? "siap" : displayStage}</Badge>
               {working ? (
                 <Button type="button" variant="outline" size="sm" className="gap-2" onClick={cancelActiveUpload}>
@@ -733,6 +830,15 @@ export function UploadEngine() {
             </div>
           </div>
           <Progress className="mt-4" value={displayProgress} />
+          {uploadMetrics ? (
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/55">
+              {uploadMetrics.map((metric) => (
+                <span key={metric} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
+                  {metric}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-3">
