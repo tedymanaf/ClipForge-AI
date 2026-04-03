@@ -21,7 +21,6 @@ export default function ClipDetailPage() {
   const clipId = typeof params.clipId === "string" ? params.clipId : "";
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
-  const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const project = useMemo(() => selectProject(projects, projectId), [projects, projectId]);
   const clip = useMemo(() => selectClip(project, clipId), [project, clipId]);
 
@@ -31,25 +30,12 @@ export default function ClipDetailPage() {
     }
 
     if (projects.length === 0) {
-      seedDemoProjects();
-      const fallbackProject = useClipForgeStore.getState().projects[0];
-      const fallbackClip = fallbackProject?.clips[0];
-      if (fallbackProject && fallbackClip) {
-        router.replace(`/project/${fallbackProject.id}/clip/${fallbackClip.id}`);
-      } else if (fallbackProject) {
-        router.replace(getProjectPrimaryRoute(fallbackProject));
-      }
+      router.replace("/dashboard");
       return;
     }
 
     if (!project) {
-      const fallbackProject = projects[0];
-      const fallbackClip = fallbackProject?.clips[0];
-      if (fallbackProject && fallbackClip) {
-        router.replace(`/project/${fallbackProject.id}/clip/${fallbackClip.id}`);
-      } else if (fallbackProject) {
-        router.replace(getProjectPrimaryRoute(fallbackProject));
-      }
+      router.replace("/dashboard");
       return;
     }
 
@@ -64,7 +50,7 @@ export default function ClipDetailPage() {
         router.replace(`/project/${project.id}/clip/${fallbackClip.id}`);
       }
     }
-  }, [clip, clipId, hydrated, projectId, project, projects, router, seedDemoProjects]);
+  }, [clip, clipId, hydrated, projectId, project, projects, router]);
 
   if (!hydrated || !projectId || !clipId) {
     return (

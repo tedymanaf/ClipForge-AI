@@ -22,7 +22,6 @@ export default function ProcessingPage() {
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
   const updateProject = useClipForgeStore((state) => state.updateProject);
-  const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const project = useMemo(() => selectProject(projects, projectId), [projects, projectId]);
   const initializedProjectRef = useRef<string | null>(null);
   const timelineSteps = project?.processingSteps?.length ? project.processingSteps : getProcessingSnapshot(8).steps;
@@ -35,18 +34,19 @@ export default function ProcessingPage() {
     }
 
     if (projects.length === 0) {
-      seedDemoProjects();
-      const fallback = useClipForgeStore.getState().projects[0];
-      if (fallback) {
-        router.replace(getProjectPrimaryRoute(fallback));
-      }
+      router.replace("/dashboard");
       return;
     }
 
     if (!project) {
-      router.replace(getProjectPrimaryRoute(projects[0]));
+      router.replace("/dashboard");
+      return;
     }
-  }, [hydrated, projectId, project, projects, router, seedDemoProjects]);
+
+    if (isProjectReadyForReview(project)) {
+      router.replace(`/project/${project.id}/clips`);
+    }
+  }, [hydrated, projectId, project, projects, router]);
 
   useEffect(() => {
     if (!hydrated || !projectId) {

@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Film, Link2, LoaderCircle, UploadCloud, Youtube } from "lucide-react";
+import { CheckCircle2, Film, Link2, LoaderCircle, UploadCloud, Youtube } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -11,13 +11,21 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { analyzeProject } from "@/modules/analysis/AnalysisEngine";
 import { getProjectPrimaryRoute } from "@/lib/project-routing";
 import { useClipForgeStore } from "@/store/useClipForgeStore";
 import { QueueItem, UploadDescriptor, UploadSource } from "@/types";
-import { createId, formatBytes, formatDuration, svgToDataUri } from "@/lib/utils";
+import { createId, formatBytes, formatDuration, sleep, svgToDataUri } from "@/lib/utils";
 
 const MAX_SIZE_BYTES = 4 * 1024 * 1024 * 1024;
 const ACCEPTED_TYPES = [".mp4", ".mov", ".avi", ".mkv", ".webm"];
+const SIMPLE_FLOW = [
+  { id: "upload", label: "Upload video", description: "File masuk ke server dan project dibuat." },
+  { id: "review", label: "Review clip", description: "AI menyusun 3 kandidat terbaik untuk direview." },
+  { id: "edit", label: "Edit cepat", description: "Rapikan hook, subtitle, dan frame utama." },
+  { id: "download", label: "Download MP4", description: "Ambil hasil akhir dalam format MP4." }
+] as const;
+type UploadFlowStage = "idle" | "uploading" | "analyzing" | "ready" | "error";
 
 function createFallbackThumbnail(label: string) {
   return svgToDataUri(`
@@ -139,16 +147,31 @@ export function UploadEngine() {
   const [error, setError] = useState<string | null>(null);
   const [urlValue, setUrlValue] = useState("");
   const [working, setWorking] = useState(false);
+  const [flowStage, setFlowStage] = useState<UploadFlowStage>("idle");
+  const [flowMessage, setFlowMessage] = useState("Pilih satu video, lalu aplikasi akan langsung membawamu ke halaman review clip.");
+  const [activeUploadName, setActiveUploadName] = useState<string | null>(null);
   const queue = useClipForgeStore((state) => state.queue);
   const addQueueItem = useClipForgeStore((state) => state.addQueueItem);
   const updateQueueItem = useClipForgeStore((state) => state.updateQueueItem);
   const removeQueueItem = useClipForgeStore((state) => state.removeQueueItem);
   const createProjectFromUpload = useClipForgeStore((state) => state.createProjectFromUpload);
+  const updateProject = useClipForgeStore((state) => state.updateProject);
   const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const projects = useClipForgeStore((state) => state.projects);
 
-  const canUploadMore = queue.length < 5;
+  const canUploadMore = queue.length < 1;
   const recentProjects = useMemo(() => projects.slice(0, 3), [projects]);
+
+  const flowProgress =
+    flowStage === "idle"
+      ? 0
+      : flowStage === "uploading"
+        ? 32
+        : flowStage === "analyzing"
+          ? 74
+          : flowStage === "ready"
+            ? 100
+            : 0;
 
   async function bestEffortPersistUpload(descriptor: UploadDescriptor) {
     if (!descriptor.file) {
@@ -192,9 +215,30 @@ export function UploadEngine() {
 
       const persistedDescriptor = await bestEffortPersistUpload(descriptor);
       const project = createProjectFromUpload(persistedDescriptor);
+      updateProject(project.id, (item) => ({
+        ...item,
+        status: "processing",
+        progress: 56,
+        insight: "Menyusun 3 clip terbaik untuk kamu review.",
+        updatedAt: new Date().toISOString()
+      }));
+
+      setFlowStage("analyzing");
+      setFlowMessage("Upload selesai. AI sedang memilih clip terbaik, menyiapkan subtitle, dan metadata dasar.");
+      await sleep(220);
+      const sourceProject = useClipForgeStore.getState().projects.find((item) => item.id === project.id) ?? {
+        ...project,
+        status: "processing" as const,
+        progress: 78,
+        insight: "Menyusun 3 clip terbaik untuk kamu review."
+      };
+
+      const analyzed = await analyzeProject(sourceProject);
+      updateProject(project.id, () => analyzed);
+
       updateQueueItem(descriptor.id, { progress: 100, status: "queued" });
       setTimeout(() => removeQueueItem(descriptor.id), 1000);
-      return project;
+      return analyzed;
     } catch (error) {
       updateQueueItem(descriptor.id, { status: "error" });
       setTimeout(() => removeQueueItem(descriptor.id), 1800);
@@ -206,11 +250,11 @@ export function UploadEngine() {
     setError(null);
 
     if (!canUploadMore) {
-      setError("Maksimum 5 video dalam antrean aktif. Tunggu satu selesai dulu ya.");
+      setError("Untuk versi sederhana ini, proses satu video dulu sampai review clip selesai.");
       return;
     }
 
-    const selected = Array.from(files).slice(0, 5 - queue.length);
+    const selected = Array.from(files).slice(0, 1);
     const invalid = selected.find((file) => !isAcceptedFile(file) || file.size > MAX_SIZE_BYTES);
 
     if (invalid) {
@@ -228,15 +272,22 @@ export function UploadEngine() {
       const descriptors = await Promise.all(selected.map((file) => extractVideoMetadata(file)));
       const createdProjects = [];
       for (const descriptor of descriptors) {
+        setActiveUploadName(descriptor.name);
+        setFlowStage("uploading");
+        setFlowMessage("Video sedang diunggah dan project sedang dibuat.");
         const project = await processDescriptor(descriptor);
         createdProjects.push(project);
       }
 
       const firstProject = createdProjects[0];
       if (firstProject) {
-        router.push(`/project/${firstProject.id}/processing`);
+        setFlowStage("ready");
+        setFlowMessage("Selesai. Clip terbaik sudah siap direview.");
+        router.push(`/project/${firstProject.id}/clips`);
       }
     } catch (uploadError) {
+      setFlowStage("error");
+      setFlowMessage("Upload atau analisis gagal. Coba reset workspace lalu upload ulang satu video.");
       setError(
         uploadError instanceof Error
           ? uploadError.message
@@ -269,8 +320,17 @@ export function UploadEngine() {
 
     setWorking(true);
     try {
+      setActiveUploadName(descriptor.name);
+      setFlowStage("uploading");
+      setFlowMessage("Link diterima. Project sedang dibuat dari sumber URL.");
       const project = await processDescriptor(descriptor);
-      router.push(`/project/${project.id}/processing`);
+      setFlowStage("ready");
+      setFlowMessage("Selesai. Clip terbaik sudah siap direview.");
+      router.push(`/project/${project.id}/clips`);
+    } catch (uploadError) {
+      setFlowStage("error");
+      setFlowMessage("Import URL gagal. Coba cek link atau pakai upload file langsung.");
+      setError(uploadError instanceof Error ? uploadError.message : "Import URL gagal.");
     } finally {
       setWorking(false);
     }
@@ -293,16 +353,15 @@ export function UploadEngine() {
           <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="section-eyebrow">Input Source</p>
-              <h3 className="mt-3 text-3xl font-semibold text-white">Masukkan video, lalu biarkan ClipForge menyusun draft awal.</h3>
+              <h3 className="mt-3 text-3xl font-semibold text-white">Upload video lalu langsung masuk ke review clip.</h3>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60">
-                Area ini disederhanakan supaya pengguna baru langsung paham: pilih sumber, tunggu project dibuat,
-                lalu masuk ke tahap review.
+                Flow utamanya sekarang dibuat sesingkat mungkin: upload, review clip, edit seperlunya, lalu download MP4.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs text-white/50">
               <Badge>Max 4GB</Badge>
-              <Badge>Hingga 5 video</Badge>
-              <Badge>Preview otomatis</Badge>
+              <Badge>1 video tiap proses</Badge>
+              <Badge>Langsung ke review</Badge>
             </div>
           </div>
 
@@ -335,8 +394,7 @@ export function UploadEngine() {
             </motion.div>
             <h3 className="text-2xl font-semibold text-white">Taruh video panjang di sini</h3>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-white/60">
-              Format MP4, MOV, AVI, MKV, atau WebM. Setelah file masuk, ClipForge akan membuat thumbnail, membaca
-              metadata dasar, lalu menyiapkan project baru secara otomatis.
+              Format MP4, MOV, AVI, MKV, atau WebM. Setelah file masuk, ClipForge akan upload, menganalisis, lalu membuka halaman review clip secara otomatis.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Button type="button" className="gap-2">
@@ -393,7 +451,7 @@ export function UploadEngine() {
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {recentProjects.length === 0 ? (
               <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-5 text-sm text-white/55 md:col-span-3">
-                Project terbaru akan muncul di sini setelah upload pertama selesai.
+                Project terbaru akan muncul di sini setelah proses upload dan analisis selesai.
               </div>
             ) : null}
             {recentProjects.map((project) => (
@@ -421,17 +479,71 @@ export function UploadEngine() {
       <Card className="space-y-5">
         <div>
           <p className="section-eyebrow">Status</p>
-          <p className="mt-3 text-2xl font-semibold text-white">Antrean upload dan panduan singkat.</p>
-          <p className="mt-2 text-sm text-white/55">Sisi kanan dibuat untuk menjawab dua hal: status proses sekarang dan apa yang akan terjadi sesudahnya.</p>
+          <p className="mt-3 text-2xl font-semibold text-white">Indikator proses yang lebih jujur dan ringkas.</p>
+          <p className="mt-2 text-sm text-white/55">Kamu cukup lihat satu tempat ini untuk tahu file sedang di tahap mana dan apa langkah berikutnya.</p>
         </div>
 
-        {queue.length === 0 ? (
-          <div className="rounded-[28px] border border-white/10 bg-black/20 p-6 text-sm text-white/55">
-            Queue masih kosong. Drop video atau coba mode demo buat lihat pipeline lengkap.
+        <div className="rounded-[28px] border border-white/10 bg-black/20 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-medium text-white">{activeUploadName ?? "Belum ada video aktif"}</p>
+              <p className="mt-2 text-sm leading-6 text-white/60">{flowMessage}</p>
+            </div>
+            <Badge>
+              {flowStage === "idle"
+                ? "siap"
+                : flowStage === "uploading"
+                  ? "upload"
+                  : flowStage === "analyzing"
+                    ? "reviewing"
+                    : flowStage === "ready"
+                      ? "siap review"
+                      : "error"}
+            </Badge>
           </div>
-        ) : (
+          <Progress className="mt-4" value={flowProgress} />
+        </div>
+
+        <div className="grid gap-3">
+          {SIMPLE_FLOW.map((step, index) => {
+            const activeIndex =
+              flowStage === "idle"
+                ? -1
+                : flowStage === "uploading"
+                  ? 0
+                  : flowStage === "analyzing"
+                    ? 1
+                    : flowStage === "ready"
+                      ? 3
+                      : 0;
+            const complete = index < activeIndex || flowStage === "ready";
+            const active = index === activeIndex && flowStage !== "ready";
+
+            return (
+              <div key={step.id} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    {complete ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+                    ) : active ? (
+                      <LoaderCircle className="h-5 w-5 animate-spin text-cyan-300" />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full border border-white/15" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">{step.label}</p>
+                    <p className="mt-1 text-sm leading-6 text-white/60">{step.description}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {queue.length > 0 ? (
           queue.map((item) => (
-            <div key={item.id} className="rounded-[28px] border border-white/10 bg-black/20 p-4">
+            <div key={item.id} className="rounded-[24px] border border-white/10 bg-black/20 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="truncate font-medium text-white">{item.name}</p>
@@ -442,26 +554,14 @@ export function UploadEngine() {
               <Progress className="mt-4" value={item.progress} />
             </div>
           ))
-        )}
-
-        <div className="grid gap-3">
-          {[
-            "Setelah upload, project langsung dibuat dan dibawa ke halaman processing.",
-            "Saat processing berjalan, clip kandidat bisa mulai muncul sebelum seluruh pipeline selesai.",
-            "Saat review selesai, export bundle akan berisi video, caption, thumbnail, dan metadata."
-          ].map((item) => (
-            <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-6 text-white/68">
-              {item}
-            </div>
-          ))}
-        </div>
+        ) : null}
 
         <div className="rounded-[28px] border border-cyan-300/15 bg-cyan-300/8 p-5">
-          <p className="font-medium text-white">Ekspektasi pengalaman</p>
+          <p className="font-medium text-white">Flow baru yang dituju</p>
           <div className="mt-3 space-y-2 text-sm text-white/65">
-            <p>Pengguna harus tahu file sudah diterima hanya dalam sekali lihat.</p>
-            <p>Project baru harus terasa langsung "hidup" setelah upload selesai.</p>
-            <p>Transkripsi dan metadata Bahasa Indonesia tetap jadi default.</p>
+            <p>Upload harus langsung terasa jalan, bukan diam di halaman yang sama.</p>
+            <p>Review clip harus jadi tujuan pertama sesudah upload berhasil.</p>
+            <p>Download MP4 harus lebih utama daripada paket teknis lain.</p>
           </div>
         </div>
       </Card>

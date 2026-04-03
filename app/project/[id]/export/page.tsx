@@ -16,7 +16,6 @@ export default function ExportPage() {
   const projectId = typeof params.id === "string" ? params.id : "";
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
-  const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const project = useMemo(() => selectProject(projects, projectId), [projects, projectId]);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const clip = useMemo(
@@ -34,25 +33,12 @@ export default function ExportPage() {
     setSelectedClipId(nextClipId);
 
     if (projects.length === 0) {
-      seedDemoProjects();
-      const fallbackProject = useClipForgeStore.getState().projects[0];
-      const fallbackClip = fallbackProject?.clips[0];
-      if (fallbackProject && fallbackClip) {
-        router.replace(`/project/${fallbackProject.id}/export?clipId=${fallbackClip.id}`);
-      } else if (fallbackProject) {
-        router.replace(getProjectPrimaryRoute(fallbackProject));
-      }
+      router.replace("/dashboard");
       return;
     }
 
     if (!project) {
-      const fallbackProject = projects[0];
-      const fallbackClip = fallbackProject?.clips[0];
-      if (fallbackProject && fallbackClip) {
-        router.replace(`/project/${fallbackProject.id}/export?clipId=${fallbackClip.id}`);
-      } else if (fallbackProject) {
-        router.replace(getProjectPrimaryRoute(fallbackProject));
-      }
+      router.replace("/dashboard");
       return;
     }
 
@@ -67,7 +53,7 @@ export default function ExportPage() {
         router.replace(`/project/${project.id}/export?clipId=${fallbackClip.id}`);
       }
     }
-  }, [hydrated, projectId, project, projects, router, seedDemoProjects]);
+  }, [hydrated, projectId, project, projects, router]);
 
   if (!hydrated || !projectId) {
     return (

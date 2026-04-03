@@ -18,7 +18,6 @@ export default function ClipsPage() {
   const projectId = typeof params.id === "string" ? params.id : "";
   const hydrated = useClipForgeStore((state) => state.hydrated);
   const projects = useClipForgeStore((state) => state.projects);
-  const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
   const project = useMemo(() => selectProject(projects, projectId), [projects, projectId]);
   const [query, setQuery] = useState("");
 
@@ -28,23 +27,19 @@ export default function ClipsPage() {
     }
 
     if (projects.length === 0) {
-      seedDemoProjects();
-      const fallback = useClipForgeStore.getState().projects[0];
-      if (fallback) {
-        router.replace(getProjectPrimaryRoute(fallback));
-      }
+      router.replace("/dashboard");
       return;
     }
 
     if (!project) {
-      router.replace(getProjectPrimaryRoute(projects[0]));
+      router.replace("/dashboard");
       return;
     }
 
     if (!isProjectReadyForReview(project)) {
       router.replace(getProjectPrimaryRoute(project));
     }
-  }, [hydrated, projectId, project, projects, router, seedDemoProjects]);
+  }, [hydrated, projectId, project, projects, router]);
 
   if (!hydrated || !projectId) {
     return (

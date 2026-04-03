@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, PackageCheck, Send } from "lucide-react";
+import { Download, PackageCheck } from "lucide-react";
 
 import { ExportPackagePreview } from "@/components/ExportPackagePreview";
 import { Button } from "@/components/ui/button";
@@ -27,25 +27,74 @@ export function ExportCenter({
   const artifacts = buildExportArtifacts(clip);
   const artifactCount = artifacts.length;
   const [downloadState, setDownloadState] = useState<"idle" | "working" | "done" | "error">("idle");
-  const [publishState, setPublishState] = useState<"idle" | "working" | "done" | "error">("idle");
-  const [publishSummary, setPublishSummary] = useState<string>("Siap menyiapkan payload publish untuk TikTok, Reels, dan Shorts.");
-  const [downloadMessage, setDownloadMessage] = useState<string>("ZIP export akan berisi MP4 per platform, thumbnail, metadata, dan caption yang bisa diedit.");
+  const [downloadMode, setDownloadMode] = useState<"mp4" | "zip">("mp4");
+  const [downloadMessage, setDownloadMessage] = useState<string>("MP4 adalah jalur utama. ZIP lengkap tetap tersedia kalau kamu butuh thumbnail, subtitle, dan metadata.");
 
-  async function handleDownload() {
+  async function handleDownloadMp4() {
     try {
       setDownloadState("working");
-      setDownloadMessage("Menyiapkan bundle export...");
+      setDownloadMode("mp4");
+      setDownloadMessage("Menyiapkan MP4 final...");
       const response = await fetch("/api/export", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ clip, metadata, asset, thumbnails, cues, captionStyle })
+        body: JSON.stringify({
+          clip,
+          metadata,
+          asset,
+          thumbnails,
+          cues,
+          captionStyle,
+          format: "mp4",
+          platform: clip.platforms.includes("youtube") ? "youtube" : clip.platforms[0] ?? "tiktok"
+        })
       });
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(payload.error || "Permintaan export gagal.");
+        throw new Error(payload.error || "Permintaan download MP4 gagal.");
+      }
+
+      const blob = await response.blob();
+      const exportNotice = response.headers.get("X-ClipForge-Export-Notice");
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${clip.title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.mp4`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      setDownloadState("done");
+      setDownloadMessage(
+        exportNotice === "MP4 completed."
+          ? "MP4 siap. Cek folder Downloads kamu."
+          : exportNotice || "MP4 siap. Cek folder Downloads kamu."
+      );
+    } catch (error) {
+      setDownloadState("error");
+      setDownloadMessage(error instanceof Error ? error.message : "Download MP4 gagal. Silakan coba lagi.");
+    }
+  }
+
+  async function handleDownloadZip() {
+    try {
+      setDownloadState("working");
+      setDownloadMode("zip");
+      setDownloadMessage("Menyiapkan ZIP lengkap...");
+      const response = await fetch("/api/export", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ clip, metadata, asset, thumbnails, cues, captionStyle, format: "zip" })
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error || "Permintaan ZIP export gagal.");
       }
 
       const blob = await response.blob();
@@ -61,39 +110,12 @@ export function ExportCenter({
       setDownloadState("done");
       setDownloadMessage(
         exportNotice === "Export completed."
-          ? "ZIP export siap. Cek folder Downloads kamu."
-          : exportNotice || "ZIP export siap. Cek folder Downloads kamu."
+          ? "ZIP lengkap siap. Cek folder Downloads kamu."
+          : exportNotice || "ZIP lengkap siap. Cek folder Downloads kamu."
       );
     } catch (error) {
       setDownloadState("error");
-      setDownloadMessage(error instanceof Error ? error.message : "Export gagal. Silakan coba lagi.");
-    }
-  }
-
-  async function handlePublishQueue() {
-    try {
-      setPublishState("working");
-      const endpoints = ["/api/publish/tiktok", "/api/publish/instagram", "/api/publish/youtube"];
-      const results = await Promise.all(
-        endpoints.map((endpoint) =>
-          fetch(endpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ clipId: clip.id, title: clip.title })
-          }).then(async (response) => {
-            const payload = (await response.json()) as { provider?: string; message?: string; ok?: boolean };
-            return `${payload.provider}: ${payload.message}`;
-          })
-        )
-      );
-
-      setPublishSummary(results.join(" "));
-      setPublishState("done");
-    } catch {
-      setPublishState("error");
-      setPublishSummary("Konektor publishing tidak bisa dijangkau. Cek konfigurasi API lalu coba lagi.");
+      setDownloadMessage(error instanceof Error ? error.message : "Download ZIP gagal. Silakan coba lagi.");
     }
   }
 
@@ -102,8 +124,8 @@ export function ExportCenter({
       <Card className="space-y-4">
         <div>
           <p className="section-eyebrow">Export</p>
-          <p className="mt-3 text-2xl font-semibold text-white">Tentukan paket akhir yang ingin kamu kirim.</p>
-          <p className="mt-2 text-sm text-white/55">Halaman export diringkas supaya fokus ke apa yang akan dikirim, bukan detail teknis yang berlebihan.</p>
+          <p className="mt-3 text-2xl font-semibold text-white">Download hasil akhir tanpa ribet.</p>
+          <p className="mt-2 text-sm text-white/55">Fokus utamanya sekarang MP4 final. ZIP lengkap tetap ada kalau kamu butuh aset pendukung.</p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
@@ -125,9 +147,9 @@ export function ExportCenter({
           {[
             "Kualitas default: Standard 1080p",
             "Format video: MP4 H.264",
-            "Caption: burn-in MP4 + file SRT + VTT",
-            "Thumbnail: JPG per platform ikut disiapkan",
-            "Distribusi: unduh ZIP atau kirim ke antrean publish"
+            "Caption: burn-in subtitle kalau tersedia",
+            "Jalur utama: download satu MP4 siap pakai",
+            "Opsi kedua: ZIP lengkap berisi aset pendukung"
           ].map((item) => (
             <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70">
               {item}
@@ -136,25 +158,17 @@ export function ExportCenter({
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Button className="gap-2" onClick={handleDownload} disabled={downloadState === "working"}>
+          <Button className="gap-2" onClick={handleDownloadMp4} disabled={downloadState === "working"}>
             <Download className="h-4 w-4" />
-            {downloadState === "working" ? "Menyiapkan ZIP..." : "Unduh ZIP"}
+            {downloadState === "working" && downloadMode === "mp4" ? "Menyiapkan MP4..." : "Download MP4"}
           </Button>
-          <Button variant="outline" className="gap-2" onClick={handlePublishQueue} disabled={publishState === "working"}>
-            <Send className="h-4 w-4" />
-            {publishState === "working" ? "Memasukkan antrean..." : "Antrean Publish"}
+          <Button variant="outline" className="gap-2" onClick={handleDownloadZip} disabled={downloadState === "working"}>
+            <PackageCheck className="h-4 w-4" />
+            {downloadState === "working" && downloadMode === "zip" ? "Menyiapkan ZIP..." : "ZIP Lengkap"}
           </Button>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
-          {downloadState === "error"
-            ? downloadMessage
-            : downloadState === "done"
-              ? downloadMessage
-              : downloadState === "working"
-                ? downloadMessage
-            : publishState === "error"
-              ? publishSummary
-              : downloadMessage}
+          {downloadMessage}
         </div>
       </Card>
 

@@ -218,7 +218,7 @@ export function ClipCard({
     try {
       setDownloadState("working");
       setMessageTone("neutral");
-      setActionMessage("Menyiapkan bundle export clip...");
+      setActionMessage("Menyiapkan MP4 clip...");
 
       const response = await fetch("/api/export", {
         method: "POST",
@@ -231,7 +231,9 @@ export function ClipCard({
           asset: project.asset,
           thumbnails: project.thumbnails[clip.id] ?? [],
           cues: project.captions[clip.id] ?? [],
-          captionStyle: project.settings.captionStyle
+          captionStyle: project.settings.captionStyle,
+          format: "mp4",
+          platform: defaultPreviewPlatform
         })
       });
 
@@ -245,7 +247,7 @@ export function ClipCard({
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = createDownloadFileName(clip.title, "zip");
+      anchor.download = createDownloadFileName(clip.title, "mp4");
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -254,9 +256,9 @@ export function ClipCard({
       setDownloadState("done");
       setMessageTone("success");
       setActionMessage(
-        exportNotice === "Export completed."
-          ? "Bundle clip berhasil diunduh ke folder Downloads."
-          : exportNotice || "Bundle clip berhasil diunduh ke folder Downloads."
+        exportNotice === "MP4 completed."
+          ? "MP4 clip berhasil diunduh ke folder Downloads."
+          : exportNotice || "MP4 clip berhasil diunduh ke folder Downloads."
       );
     } catch (error) {
       setDownloadState("error");

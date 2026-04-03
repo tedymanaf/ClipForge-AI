@@ -17,11 +17,13 @@ type ExportRequestPayload = {
   clip: Partial<ClipCandidate> & {
     transcript?: Array<{ id?: string; startMs?: number; endMs?: number; startSec?: number; endSec?: number; text?: string }>;
   };
+  format?: "zip" | "mp4";
   metadata?: MetadataBundle;
   asset?: VideoAsset;
   thumbnails?: ThumbnailVariant[];
   cues?: Array<Partial<CaptionCue> & { startSec?: number; endSec?: number }>;
   captionStyle?: CaptionStyleId;
+  platform?: "tiktok" | "instagram" | "youtube" | "square";
 };
 
 type ParsedDataUri = {
@@ -688,8 +690,6 @@ export async function POST(request: Request) {
   const body = (await request.json()) as ExportRequestPayload;
   const clip = normalizeClip(body.clip);
   const cues = normalizeCuePayload(body.cues);
-  const zip = new JSZip();
-  const artifacts = buildExportArtifacts(clip);
   const metadata = body.metadata ?? generateMetadataBundle(clip);
   const tempDir = await mkdtemp(join(tmpdir(), "clipforge-export-"));
 
@@ -700,6 +700,35 @@ export async function POST(request: Request) {
     const ytThumbnailPath = await writeDataUriToTempFile(thumbnailBySize.get("1280x720"), tempDir, `${baseName}-yt-thumb`);
     const igThumbnailPath = await writeDataUriToTempFile(thumbnailBySize.get("1080x1080"), tempDir, `${baseName}-ig-thumb`);
     const fallbackNotes = new Set<string>();
+    const hasSubtitleContent = normalizeCues(clip, cues).length > 0;
+    const subtitlePath = hasSubtitleContent ? join(tempDir, `${baseName}-${body.captionStyle ?? "creator-pro"}.ass`) : null;
+
+    if (subtitlePath && !(await fileExists(subtitlePath))) {
+      await writeFile(subtitlePath, buildAssSubtitles(clip, cues, body.captionStyle), "utf8");
+    }
+
+    if (body.format === "mp4") {
+      const platform = body.platform ?? (clip.platforms.includes("youtube") ? "youtube" : clip.platforms[0] ?? "tiktok");
+      const outputPath = join(tempDir, `${baseName}_${platform}.mp4`);
+      const renderMode = await renderVideoArtifact(outputPath, clip, body.asset, previewImagePath, platform, subtitlePath);
+      const notice =
+        renderMode === "source"
+          ? "MP4 completed."
+          : renderMode === "preview"
+            ? "MP4 completed with preview image fallback because the original upload was unavailable on the server."
+            : "MP4 completed with canvas fallback because the original upload was unavailable on the server.";
+
+      return new NextResponse(await readFile(outputPath), {
+        headers: {
+          "Content-Type": "video/mp4",
+          "Content-Disposition": `attachment; filename="${baseName}.mp4"`,
+          "X-ClipForge-Export-Notice": notice
+        }
+      });
+    }
+
+    const zip = new JSZip();
+    const artifacts = buildExportArtifacts(clip);
 
     for (const artifact of artifacts) {
       if (artifact.name.endsWith(".json")) {
@@ -718,13 +747,6 @@ export async function POST(request: Request) {
       }
 
       const outputPath = join(tempDir, basename(artifact.name));
-
-      const hasSubtitleContent = normalizeCues(clip, cues).length > 0;
-      const subtitlePath = hasSubtitleContent ? join(tempDir, `${baseName}-${body.captionStyle ?? "creator-pro"}.ass`) : null;
-
-      if (subtitlePath && !(await fileExists(subtitlePath))) {
-        await writeFile(subtitlePath, buildAssSubtitles(clip, cues, body.captionStyle), "utf8");
-      }
 
       if (artifact.name.endsWith(".mp4")) {
         const platform = artifact.name.includes("_tiktok.")

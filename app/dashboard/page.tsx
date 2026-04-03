@@ -4,7 +4,6 @@ import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  CheckCircle2,
   Clapperboard,
   Film,
   FolderKanban,
@@ -31,18 +30,18 @@ import { useClipForgeStore } from "@/store/useClipForgeStore";
 const workflowHighlights = [
   {
     icon: FolderKanban,
-    title: "Alur tetap utuh",
-    description: "Upload, transcript, clip, caption, thumbnail, dan export tetap berada di satu konteks project."
+    title: "Alur lebih singkat",
+    description: "Sekarang fokus ke empat langkah inti: upload, review, edit, lalu download MP4."
   },
   {
     icon: WandSparkles,
-    title: "Draft dibantu AI",
-    description: "ClipForge memberi titik awal yang jelas, lalu kamu tinggal review dan memutuskan hasil akhirnya."
+    title: "Review lebih cepat",
+    description: "Setelah upload, aplikasi langsung menyiapkan clip terbaik supaya kamu tidak menunggu halaman kosong."
   },
   {
     icon: TimerReset,
-    title: "Ramah untuk prototyping",
-    description: "Mode demo, fallback export, dan penyimpanan lokal memudahkan pengujian tanpa setup berat."
+    title: "Reset lebih jelas",
+    description: "Kalau data lama bentrok, kamu bisa bersihkan workspace penuh langsung dari UI."
   }
 ];
 
@@ -363,18 +362,6 @@ export default function DashboardPage() {
           <Settings />
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          {[
-            "Utamakan kejelasan alur dibanding efek visual berlebih.",
-            "Letakkan keputusan penting di bagian atas setiap halaman.",
-            "Anggap AI sebagai asisten editor, bukan autopilot penuh."
-          ].map((item) => (
-            <Card key={item} className="flex items-start gap-3">
-              <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-300" />
-              <p className="text-sm leading-6 text-white/68">{item}</p>
-            </Card>
-          ))}
-        </section>
       </AppShell>
     </>
   );
