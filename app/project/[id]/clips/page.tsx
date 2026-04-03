@@ -92,12 +92,12 @@ export default function ClipsPage() {
                 Edit Clip Terbaik
               </Button>
             </Link>
-            <Link href={`/project/${project.id}/export?clipId=${bestClip.id}`}>
-              <Button className="gap-2">
+            <a href={bestClip.downloadUrl || `/api/download/${project.id}/${bestClip.id}`} download>
+              <Button className="gap-2" type="button">
                 <Download className="h-4 w-4" />
                 Download MP4
               </Button>
-            </Link>
+            </a>
           </>
         ) : null
       }
@@ -123,12 +123,12 @@ export default function ClipsPage() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href={`/project/${project.id}/export?clipId=${bestClip.id}`}>
-              <Button className="gap-2">
+            <a href={bestClip.downloadUrl || `/api/download/${project.id}/${bestClip.id}`} download>
+              <Button className="gap-2" type="button">
                 Download MP4
                 <Download className="h-4 w-4" />
               </Button>
-            </Link>
+            </a>
           </div>
         </Card>
       ) : null}

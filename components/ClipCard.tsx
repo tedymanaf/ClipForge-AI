@@ -21,6 +21,10 @@ const platformLabels: Record<Platform, string> = {
   square: "Square 1:1"
 };
 
+function resolveClipDownloadUrl(projectId: string, clipId: string, directUrl?: string) {
+  return directUrl || `/api/download/${projectId}/${clipId}`;
+}
+
 export function ClipCard({
   clip,
   project
@@ -43,7 +47,9 @@ export function ClipCard({
     [clip.platforms]
   );
   const [selectedPreviewPlatform, setSelectedPreviewPlatform] = useState<Platform>(defaultPreviewPlatform);
-  const [actionMessage, setActionMessage] = useState("Play akan membuka preview vertikal 9:16, dan Download akan mengunduh bundle clip.");
+  const [actionMessage, setActionMessage] = useState(
+    "Play akan membuka preview vertikal 9:16, dan Download akan mengambil MP4 hasil backend."
+  );
   const [messageTone, setMessageTone] = useState<"neutral" | "success" | "error">("neutral");
 
   useEffect(() => {
@@ -218,36 +224,24 @@ export function ClipCard({
     try {
       setDownloadState("working");
       setMessageTone("neutral");
-      setActionMessage("Menyiapkan MP4 clip...");
+      setActionMessage("Mengambil MP4 clip dari backend...");
 
-      const response = await fetch("/api/export", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          clip,
-          metadata: project.metadata[clip.id],
-          asset: project.asset,
-          thumbnails: project.thumbnails[clip.id] ?? [],
-          cues: project.captions[clip.id] ?? [],
-          captionStyle: project.settings.captionStyle,
-          format: "mp4",
-          platform: defaultPreviewPlatform
-        })
+      const response = await fetch(resolveClipDownloadUrl(projectId, clip.id, clip.downloadUrl), {
+        cache: "no-store"
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(payload.error || "Permintaan download clip gagal.");
+        const payload = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+        throw new Error(payload.detail || payload.error || "Permintaan download clip gagal.");
       }
 
       const blob = await response.blob();
-      const exportNotice = response.headers.get("X-ClipForge-Export-Notice");
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = createDownloadFileName(clip.title, "mp4");
+      anchor.download = clip.downloadUrl
+        ? clip.downloadUrl.split("/").filter(Boolean).at(-1) || createDownloadFileName(clip.title, "mp4")
+        : createDownloadFileName(clip.title, "mp4");
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -255,11 +249,7 @@ export function ClipCard({
 
       setDownloadState("done");
       setMessageTone("success");
-      setActionMessage(
-        exportNotice === "MP4 completed."
-          ? "MP4 clip berhasil diunduh ke folder Downloads."
-          : exportNotice || "MP4 clip berhasil diunduh ke folder Downloads."
-      );
+      setActionMessage("MP4 clip berhasil diunduh dari backend ke folder Downloads.");
     } catch (error) {
       setDownloadState("error");
       setMessageTone("error");

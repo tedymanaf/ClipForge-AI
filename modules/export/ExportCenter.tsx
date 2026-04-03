@@ -10,6 +10,7 @@ import { buildExportArtifacts } from "@/modules/clipper/ClipGenerator";
 import { CaptionCue, CaptionStyleId, ClipCandidate, MetadataBundle, ThumbnailVariant, VideoAsset } from "@/types";
 
 export function ExportCenter({
+  projectId,
   clip,
   metadata,
   asset,
@@ -17,6 +18,7 @@ export function ExportCenter({
   cues,
   captionStyle
 }: {
+  projectId: string;
   clip: ClipCandidate;
   metadata?: MetadataBundle;
   asset: VideoAsset;
@@ -34,45 +36,29 @@ export function ExportCenter({
     try {
       setDownloadState("working");
       setDownloadMode("mp4");
-      setDownloadMessage("Menyiapkan MP4 final...");
-      const response = await fetch("/api/export", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          clip,
-          metadata,
-          asset,
-          thumbnails,
-          cues,
-          captionStyle,
-          format: "mp4",
-          platform: clip.platforms.includes("youtube") ? "youtube" : clip.platforms[0] ?? "tiktok"
-        })
+      setDownloadMessage("Mengambil MP4 final dari backend...");
+      const response = await fetch(clip.downloadUrl || `/api/download/${projectId}/${clip.id}`, {
+        cache: "no-store"
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(payload.error || "Permintaan download MP4 gagal.");
+        const payload = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+        throw new Error(payload.detail || payload.error || "Permintaan download MP4 gagal.");
       }
 
       const blob = await response.blob();
-      const exportNotice = response.headers.get("X-ClipForge-Export-Notice");
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `${clip.title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.mp4`;
+      anchor.download = clip.downloadUrl
+        ? clip.downloadUrl.split("/").filter(Boolean).at(-1) || `${clip.title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.mp4`
+        : `${clip.title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.mp4`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(url);
       setDownloadState("done");
-      setDownloadMessage(
-        exportNotice === "MP4 completed."
-          ? "MP4 siap. Cek folder Downloads kamu."
-          : exportNotice || "MP4 siap. Cek folder Downloads kamu."
-      );
+      setDownloadMessage("MP4 siap. File diambil langsung dari backend dan sudah masuk ke folder Downloads.");
     } catch (error) {
       setDownloadState("error");
       setDownloadMessage(error instanceof Error ? error.message : "Download MP4 gagal. Silakan coba lagi.");

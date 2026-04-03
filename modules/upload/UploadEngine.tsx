@@ -11,31 +11,49 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { analyzeProject } from "@/modules/analysis/AnalysisEngine";
+import { getProcessingSnapshot } from "@/modules/analysis/AnalysisEngine";
 import { getProjectPrimaryRoute } from "@/lib/project-routing";
 import { useClipForgeStore } from "@/store/useClipForgeStore";
-import { QueueItem, UploadDescriptor, UploadSource } from "@/types";
-import { createId, formatBytes, formatDuration, sleep, svgToDataUri } from "@/lib/utils";
+import { BackendProcessingStage, GeneratedClip, QueueItem, UploadDescriptor, UploadSource } from "@/types";
+import { createId, formatBytes, formatDuration, svgToDataUri } from "@/lib/utils";
 
-const MAX_SIZE_BYTES = 4 * 1024 * 1024 * 1024;
+const MAX_SIZE_BYTES = 500 * 1024 * 1024;
 const ACCEPTED_TYPES = [".mp4", ".mov", ".avi", ".mkv", ".webm"];
 const SIMPLE_FLOW = [
-  { id: "upload", label: "Upload video", description: "File masuk ke server dan project dibuat." },
-  { id: "review", label: "Review clip", description: "AI menyusun 3 kandidat terbaik untuk direview." },
-  { id: "edit", label: "Edit cepat", description: "Rapikan hook, subtitle, dan frame utama." },
-  { id: "download", label: "Download MP4", description: "Ambil hasil akhir dalam format MP4." }
+  { id: "upload", label: "Upload video", description: "Video dikirim ke backend FastAPI." },
+  { id: "review", label: "Review clip", description: "Backend memilih 3 segmen terbaik." },
+  { id: "edit", label: "Edit cepat", description: "Kamu bisa rapikan caption dan metadata." },
+  { id: "download", label: "Download MP4", description: "Unduh clip final langsung dari server." }
 ] as const;
-type UploadFlowStage = "idle" | "uploading" | "analyzing" | "ready" | "error";
 
-function createAbortError() {
-  return new DOMException("Upload dibatalkan oleh pengguna.", "AbortError");
-}
+type UploadApiResponse = {
+  project_id: string;
+  filename: string;
+  status: string;
+  path?: string;
+  size_bytes?: number;
+};
 
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) {
-    throw createAbortError();
-  }
-}
+type StatusApiResponse = {
+  stage: BackendProcessingStage;
+  progress: number;
+  message?: string;
+  error?: string;
+};
+
+type ClipsApiResponse = {
+  project_id: string;
+  clips: Array<{
+    id: string;
+    start_sec: number;
+    end_sec: number;
+    score: number;
+    hook_reason: string;
+    caption_suggestion: string;
+    filename: string;
+    download_url: string;
+  }>;
+};
 
 function createFallbackThumbnail(label: string) {
   return svgToDataUri(`
@@ -74,7 +92,8 @@ async function extractVideoMetadata(file: File): Promise<UploadDescriptor> {
       let thumbnail = createFallbackThumbnail(file.name);
 
       try {
-        video.currentTime = durationSec > 0 ? Math.min(Math.max(durationSec * 0.25, 0.1), Math.max(durationSec - 0.1, 0.1)) : 0;
+        video.currentTime =
+          durationSec > 0 ? Math.min(Math.max(durationSec * 0.25, 0.1), Math.max(durationSec - 0.1, 0.1)) : 0;
 
         thumbnail = await new Promise<string>((thumbnailResolve) => {
           let settled = false;
@@ -150,95 +169,263 @@ async function extractVideoMetadata(file: File): Promise<UploadDescriptor> {
   return descriptor;
 }
 
+function uploadFileWithProgress(
+  file: File,
+  onProgress: (progress: number) => void,
+  xhrRef: React.MutableRefObject<XMLHttpRequest | null>
+) {
+  return new Promise<UploadApiResponse>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhrRef.current = xhr;
+    xhr.open("POST", "/api/upload");
+    xhr.responseType = "json";
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) {
+        return;
+      }
+
+      onProgress(Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100))));
+    };
+
+    xhr.onload = () => {
+      xhrRef.current = null;
+      const payload =
+        typeof xhr.response === "object" && xhr.response
+          ? (xhr.response as UploadApiResponse | { detail?: string })
+          : JSON.parse(xhr.responseText || "{}");
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(payload as UploadApiResponse);
+        return;
+      }
+
+      reject(new Error((payload as { detail?: string }).detail || "Upload gagal."));
+    };
+
+    xhr.onerror = () => {
+      xhrRef.current = null;
+      reject(new Error("Koneksi upload gagal."));
+    };
+
+    xhr.onabort = () => {
+      xhrRef.current = null;
+      reject(new DOMException("Upload dibatalkan.", "AbortError"));
+    };
+
+    const formData = new FormData();
+    formData.append("file", file);
+    xhr.send(formData);
+  });
+}
+
+function mapStageMessage(stage: BackendProcessingStage, fallback?: string) {
+  if (fallback?.trim()) {
+    return fallback;
+  }
+
+  switch (stage) {
+    case "uploading":
+      return "Video sedang diunggah ke server.";
+    case "transcribing":
+      return "Audio sedang ditranskripsi dengan Whisper.";
+    case "scoring":
+      return "GPT-4o-mini sedang memilih 3 segmen terbaik.";
+    case "cutting":
+      return "Backend sedang memotong 3 clip MP4 dengan ffmpeg.";
+    case "ready":
+      return "Tiga clip kandidat sudah siap direview.";
+    case "error":
+      return "Proses gagal. Silakan coba lagi.";
+    default:
+      return "Siap menerima upload baru.";
+  }
+}
+
+function mapStatusToProjectStatus(stage: BackendProcessingStage) {
+  if (stage === "ready") {
+    return "ready" as const;
+  }
+
+  if (stage === "error") {
+    return "error" as const;
+  }
+
+  return "processing" as const;
+}
+
+function normalizeBackendClips(payload: ClipsApiResponse["clips"]): GeneratedClip[] {
+  return payload.map((clip) => ({
+    id: clip.id,
+    startSec: clip.start_sec,
+    endSec: clip.end_sec,
+    score: clip.score,
+    hookReason: clip.hook_reason,
+    captionSuggestion: clip.caption_suggestion,
+    filename: clip.filename,
+    downloadUrl: clip.download_url
+  }));
+}
+
 export function UploadEngine() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const activeAbortRef = useRef<AbortController | null>(null);
+  const uploadXhrRef = useRef<XMLHttpRequest | null>(null);
+  const pollAbortRef = useRef<AbortController | null>(null);
+  const activeProjectIdRef = useRef<string | null>(null);
   const activeQueueIdRef = useRef<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [urlValue, setUrlValue] = useState("");
   const [working, setWorking] = useState(false);
-  const [flowStage, setFlowStage] = useState<UploadFlowStage>("idle");
-  const [flowMessage, setFlowMessage] = useState("Pilih satu video, lalu aplikasi akan langsung membawamu ke halaman review clip.");
+  const [flowMessage, setFlowMessage] = useState("Pilih satu video, lalu sistem akan langsung memproses dan membuka hasil review.");
   const [activeUploadName, setActiveUploadName] = useState<string | null>(null);
+
+  const projects = useClipForgeStore((state) => state.projects);
   const queue = useClipForgeStore((state) => state.queue);
+  const preferences = useClipForgeStore((state) => state.preferences);
+  const currentProjectId = useClipForgeStore((state) => state.currentProjectId);
+  const processingStage = useClipForgeStore((state) => state.processingStage);
+  const processingProgress = useClipForgeStore((state) => state.processingProgress);
   const addQueueItem = useClipForgeStore((state) => state.addQueueItem);
   const updateQueueItem = useClipForgeStore((state) => state.updateQueueItem);
   const removeQueueItem = useClipForgeStore((state) => state.removeQueueItem);
   const createProjectFromUpload = useClipForgeStore((state) => state.createProjectFromUpload);
+  const removeProject = useClipForgeStore((state) => state.removeProject);
   const updateProject = useClipForgeStore((state) => state.updateProject);
-  const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
-  const projects = useClipForgeStore((state) => state.projects);
+  const resetProcessingState = useClipForgeStore((state) => state.resetProcessingState);
+  const setCurrentProjectId = useClipForgeStore((state) => state.setCurrentProjectId);
+  const setProcessingStatus = useClipForgeStore((state) => state.setProcessingStatus);
+  const setGeneratedClips = useClipForgeStore((state) => state.setGeneratedClips);
 
-  const canUploadMore = queue.length < 1;
+  const canUpload = !working;
   const recentProjects = useMemo(() => projects.slice(0, 3), [projects]);
+  const displayStage = working ? processingStage : "idle";
+  const displayProgress = working ? Math.max(processingProgress, 4) : 0;
 
-  const flowProgress =
-    flowStage === "idle"
-      ? 0
-      : flowStage === "uploading"
-        ? 32
-        : flowStage === "analyzing"
-          ? 74
-          : flowStage === "ready"
-            ? 100
-            : 0;
-
-  function resetUploadStatus(options?: { message?: string; tone?: UploadFlowStage; clearName?: boolean }) {
+  function resetLocalFlow(message?: string) {
     setWorking(false);
-    setFlowStage(options?.tone ?? "idle");
-    setFlowMessage(options?.message ?? "Pilih satu video, lalu aplikasi akan langsung membawamu ke halaman review clip.");
-    if (options?.clearName ?? true) {
-      setActiveUploadName(null);
-    }
-    activeAbortRef.current = null;
+    setError(null);
+    setActiveUploadName(null);
+    setFlowMessage(message ?? "Pilih satu video, lalu sistem akan langsung memproses dan membuka hasil review.");
+    activeProjectIdRef.current = null;
     activeQueueIdRef.current = null;
+    uploadXhrRef.current = null;
+    pollAbortRef.current = null;
+    resetProcessingState();
   }
 
   function cancelActiveUpload() {
-    const activeQueueId = activeQueueIdRef.current;
-    if (activeAbortRef.current) {
-      activeAbortRef.current.abort();
+    uploadXhrRef.current?.abort();
+    pollAbortRef.current?.abort();
+
+    if (activeQueueIdRef.current) {
+      removeQueueItem(activeQueueIdRef.current);
     }
 
-    if (activeQueueId) {
-      removeQueueItem(activeQueueId);
+    if (activeProjectIdRef.current) {
+      removeProject(activeProjectIdRef.current);
     }
 
-    resetUploadStatus({
-      tone: "idle",
-      message: "Upload dibatalkan. Kamu bisa pilih video lain kapan saja."
-    });
-    setError(null);
+    resetLocalFlow("Proses dibatalkan. Kamu bisa memilih video lain kapan saja.");
   }
 
-  async function bestEffortPersistUpload(descriptor: UploadDescriptor, signal?: AbortSignal) {
-    if (!descriptor.file) {
-      return descriptor;
-    }
-
-    const formData = new FormData();
-    formData.append("file", descriptor.file);
-    const response = await fetch("/api/upload", { method: "POST", body: formData, signal });
-    throwIfAborted(signal);
+  async function beginBackendProcessing(projectId: string) {
+    const response = await fetch(`/api/process/${projectId}`, {
+      method: "POST",
+      headers: preferences.openAiKey ? { "x-openai-api-key": preferences.openAiKey } : undefined
+    });
 
     if (!response.ok) {
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(
-        payload.error || "Video gagal diunggah ke server. Preview dan export butuh source video asli, jadi upload harus berhasil dulu."
-      );
+      const payload = (await response.json().catch(() => ({}))) as { detail?: string };
+      throw new Error(payload.detail || "Backend gagal memulai proses AI.");
     }
-
-    const payload = (await response.json()) as { id?: string; path?: string };
-    return {
-      ...descriptor,
-      serverAssetId: payload.id ?? descriptor.serverAssetId,
-      path: payload.path ?? descriptor.path
-    };
   }
 
-  async function processDescriptor(descriptor: UploadDescriptor, signal?: AbortSignal) {
+  async function fetchClips(projectId: string) {
+    const response = await fetch(`/api/clips/${projectId}`, { cache: "no-store" });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { detail?: string };
+      throw new Error(payload.detail || "Daftar clip belum tersedia.");
+    }
+
+    const payload = (await response.json()) as ClipsApiResponse;
+    return normalizeBackendClips(payload.clips);
+  }
+
+  async function pollProjectStatus(projectId: string) {
+    pollAbortRef.current?.abort();
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
+
+    while (!controller.signal.aborted) {
+      const response = await fetch(`/api/status/${projectId}`, {
+        cache: "no-store",
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { detail?: string };
+        throw new Error(payload.detail || "Status project tidak bisa dibaca.");
+      }
+
+      const status = (await response.json()) as StatusApiResponse;
+      setProcessingStatus(status.stage, status.progress);
+      setFlowMessage(mapStageMessage(status.stage, status.message));
+      updateProject(projectId, (project) => ({
+        ...project,
+        status: mapStatusToProjectStatus(status.stage),
+        progress: status.progress,
+        insight: mapStageMessage(status.stage, status.message),
+        processingSteps: getProcessingSnapshot(status.progress).steps,
+        updatedAt: new Date().toISOString()
+      }));
+
+      if (activeQueueIdRef.current) {
+        updateQueueItem(activeQueueIdRef.current, {
+          status: status.stage === "ready" ? "ready" : status.stage === "error" ? "error" : "processing",
+          progress: status.progress
+        });
+      }
+
+      if (status.stage === "ready") {
+        const clips = await fetchClips(projectId);
+        setGeneratedClips(projectId, clips);
+        if (activeQueueIdRef.current) {
+          updateQueueItem(activeQueueIdRef.current, { status: "ready", progress: 100 });
+          window.setTimeout(() => {
+            if (activeQueueIdRef.current) {
+              removeQueueItem(activeQueueIdRef.current);
+            }
+          }, 900);
+        }
+        setFlowMessage("Tiga clip kandidat sudah siap direview.");
+        setWorking(false);
+        pollAbortRef.current = null;
+        router.push(`/project/${projectId}/clips`);
+        return;
+      }
+
+      if (status.stage === "error") {
+        throw new Error(status.error || status.message || "Proses AI gagal.");
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+
+  async function handleDescriptor(descriptor: UploadDescriptor) {
+    if (!descriptor.file) {
+      throw new Error("File upload tidak ditemukan.");
+    }
+
+    setWorking(true);
+    setError(null);
+    setActiveUploadName(descriptor.name);
+    setFlowMessage("Video sedang diunggah ke backend FastAPI.");
+    setProcessingStatus("uploading", 0);
+    setCurrentProjectId(null);
+
     const queueItem: QueueItem = {
       id: descriptor.id,
       name: descriptor.name,
@@ -249,62 +436,73 @@ export function UploadEngine() {
 
     addQueueItem(queueItem);
     activeQueueIdRef.current = descriptor.id;
-    try {
-      for (const progress of [15, 34, 58, 76, 92]) {
-        throwIfAborted(signal);
-        updateQueueItem(descriptor.id, { progress });
-        await new Promise((resolve) => setTimeout(resolve, 140));
-      }
 
-      const persistedDescriptor = await bestEffortPersistUpload(descriptor, signal);
-      throwIfAborted(signal);
-      const project = createProjectFromUpload(persistedDescriptor);
+    try {
+      const uploadPayload = await uploadFileWithProgress(
+        descriptor.file,
+        (progress) => {
+          setProcessingStatus("uploading", progress);
+          updateQueueItem(descriptor.id, { progress, status: "uploading" });
+        },
+        uploadXhrRef
+      );
+
+      const project = createProjectFromUpload({
+        ...descriptor,
+        projectId: uploadPayload.project_id,
+        path: uploadPayload.path,
+        serverAssetId: uploadPayload.filename
+      });
+
+      activeProjectIdRef.current = project.id;
+      setCurrentProjectId(project.id);
       updateProject(project.id, (item) => ({
         ...item,
         status: "processing",
-        progress: 56,
-        insight: "Menyusun 3 clip terbaik untuk kamu review.",
+        progress: 8,
+        insight: "Upload selesai. Backend sedang memulai transkripsi.",
+        processingSteps: getProcessingSnapshot(8).steps,
         updatedAt: new Date().toISOString()
       }));
 
-      setFlowStage("analyzing");
-      setFlowMessage("Upload selesai. AI sedang memilih clip terbaik, menyiapkan subtitle, dan metadata dasar.");
-      await sleep(220);
-      throwIfAborted(signal);
-      const sourceProject = useClipForgeStore.getState().projects.find((item) => item.id === project.id) ?? {
-        ...project,
-        status: "processing" as const,
-        progress: 78,
-        insight: "Menyusun 3 clip terbaik untuk kamu review."
-      };
-
-      const analyzed = await analyzeProject(sourceProject);
-      throwIfAborted(signal);
-      updateProject(project.id, () => analyzed);
-
-      updateQueueItem(descriptor.id, { progress: 100, status: "queued" });
-      setTimeout(() => removeQueueItem(descriptor.id), 1000);
-      activeQueueIdRef.current = null;
-      return analyzed;
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        removeQueueItem(descriptor.id);
-        activeQueueIdRef.current = null;
-        throw error;
+      await beginBackendProcessing(project.id);
+      setFlowMessage("Upload selesai. Backend sedang mentranskripsi audio.");
+      await pollProjectStatus(project.id);
+    } catch (uploadError) {
+      if (uploadError instanceof DOMException && uploadError.name === "AbortError") {
+        return;
       }
 
-      updateQueueItem(descriptor.id, { status: "error" });
-      setTimeout(() => removeQueueItem(descriptor.id), 1800);
-      activeQueueIdRef.current = null;
-      throw error;
+      if (activeQueueIdRef.current) {
+        updateQueueItem(activeQueueIdRef.current, { status: "error" });
+        window.setTimeout(() => {
+          if (activeQueueIdRef.current) {
+            removeQueueItem(activeQueueIdRef.current);
+          }
+        }, 1200);
+      }
+
+      if (activeProjectIdRef.current) {
+        updateProject(activeProjectIdRef.current, (project) => ({
+          ...project,
+          status: "error",
+          progress: processingProgress,
+          insight: uploadError instanceof Error ? uploadError.message : "Proses backend gagal.",
+          updatedAt: new Date().toISOString()
+        }));
+      }
+
+      setProcessingStatus("error", processingProgress || 100);
+      setFlowMessage("Proses gagal. Coba cek OpenAI API key lalu upload ulang videonya.");
+      setError(uploadError instanceof Error ? uploadError.message : "Upload gagal.");
+      setWorking(false);
+      pollAbortRef.current = null;
     }
   }
 
   async function handleFiles(files: FileList | File[]) {
-    setError(null);
-
-    if (!canUploadMore) {
-      setError("Untuk versi sederhana ini, proses satu video dulu sampai review clip selesai.");
+    if (!canUpload) {
+      setError("Tunggu proses aktif selesai atau batalkan dulu sebelum upload video baru.");
       return;
     }
 
@@ -315,51 +513,14 @@ export function UploadEngine() {
       setError(
         !isAcceptedFile(invalid)
           ? "Format belum didukung. Gunakan MP4, MOV, AVI, MKV, atau WebM."
-          : "Ukuran file melebihi 4GB. Coba kompres video atau bagi jadi batch."
+          : "Ukuran file melebihi 500MB agar tetap aman di Hugging Face free tier."
       );
       return;
     }
 
-    setWorking(true);
-    const controller = new AbortController();
-    activeAbortRef.current = controller;
-
-    try {
-      const descriptors = await Promise.all(selected.map((file) => extractVideoMetadata(file)));
-      const createdProjects = [];
-      for (const descriptor of descriptors) {
-        setActiveUploadName(descriptor.name);
-        setFlowStage("uploading");
-        setFlowMessage("Video sedang diunggah dan project sedang dibuat.");
-        const project = await processDescriptor(descriptor, controller.signal);
-        createdProjects.push(project);
-      }
-
-      const firstProject = createdProjects[0];
-      if (firstProject) {
-        setFlowStage("ready");
-        setFlowMessage("Selesai. Clip terbaik sudah siap direview.");
-        activeAbortRef.current = null;
-        router.push(`/project/${firstProject.id}/clips`);
-      }
-    } catch (uploadError) {
-      if (uploadError instanceof DOMException && uploadError.name === "AbortError") {
-        return;
-      }
-
-      setFlowStage("error");
-      setFlowMessage("Upload atau analisis gagal. Coba reset workspace lalu upload ulang satu video.");
-      setError(
-        uploadError instanceof Error
-          ? uploadError.message
-          : "Upload video ke server gagal. Project belum dibuat supaya tidak berakhir di preview logo saja."
-      );
-    } finally {
-      if (!controller.signal.aborted) {
-        setWorking(false);
-        activeAbortRef.current = null;
-      }
-    }
+    resetProcessingState();
+    const [descriptor] = await Promise.all(selected.map((file) => extractVideoMetadata(file)));
+    await handleDescriptor(descriptor);
   }
 
   async function handleImportUrl() {
@@ -372,51 +533,31 @@ export function UploadEngine() {
     const descriptor: UploadDescriptor = {
       id: createId("upload"),
       name: source === "youtube" ? "YouTube Import.mp4" : "Google Drive Import.mp4",
+      file: new File([], source === "youtube" ? "youtube_import.mp4" : "drive_import.mp4"),
       url: urlValue,
       source,
-      durationSec: 540,
+      durationSec: 0,
       width: 1920,
       height: 1080,
-      sizeBytes: 1_400_000_000,
-      codec: "H.264",
+      sizeBytes: 0,
+      codec: "video/mp4",
       thumbnail: createFallbackThumbnail(source === "youtube" ? "YouTube Import" : "Drive Import")
     };
 
-    setWorking(true);
-    const controller = new AbortController();
-    activeAbortRef.current = controller;
-    try {
-      setActiveUploadName(descriptor.name);
-      setFlowStage("uploading");
-      setFlowMessage("Link diterima. Project sedang dibuat dari sumber URL.");
-      const project = await processDescriptor(descriptor, controller.signal);
-      setFlowStage("ready");
-      setFlowMessage("Selesai. Clip terbaik sudah siap direview.");
-      activeAbortRef.current = null;
-      router.push(`/project/${project.id}/clips`);
-    } catch (uploadError) {
-      if (uploadError instanceof DOMException && uploadError.name === "AbortError") {
-        return;
-      }
-
-      setFlowStage("error");
-      setFlowMessage("Import URL gagal. Coba cek link atau pakai upload file langsung.");
-      setError(uploadError instanceof Error ? uploadError.message : "Import URL gagal.");
-    } finally {
-      if (!controller.signal.aborted) {
-        setWorking(false);
-        activeAbortRef.current = null;
-      }
-    }
+    setError("Import URL belum aktif di backend baru. Untuk saat ini gunakan upload file langsung.");
+    void descriptor;
   }
 
-  function activateDemoMode() {
-    seedDemoProjects();
-    const first = useClipForgeStore.getState().projects[0];
-    if (first) {
-      router.push(getProjectPrimaryRoute(first));
-    }
-  }
+  const activeIndex =
+    displayStage === "idle"
+      ? -1
+      : displayStage === "uploading"
+        ? 0
+        : displayStage === "transcribing" || displayStage === "scoring" || displayStage === "cutting"
+          ? 1
+          : displayStage === "ready"
+            ? 3
+            : 0;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -427,15 +568,15 @@ export function UploadEngine() {
           <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="section-eyebrow">Input Source</p>
-              <h3 className="mt-3 text-3xl font-semibold text-white">Upload video lalu langsung masuk ke review clip.</h3>
+              <h3 className="mt-3 text-3xl font-semibold text-white">Upload video lalu backend akan memproses clip sungguhan.</h3>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60">
-                Flow utamanya sekarang dibuat sesingkat mungkin: upload, review clip, edit seperlunya, lalu download MP4.
+                Flow utamanya sekarang nyata: upload ke FastAPI, transkripsi Whisper, scoring GPT-4o-mini, potong 3 clip MP4, lalu review hasilnya.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs text-white/50">
-              <Badge>Max 4GB</Badge>
+              <Badge>Max 500MB</Badge>
               <Badge>1 video tiap proses</Badge>
-              <Badge>Langsung ke review</Badge>
+              <Badge>Whisper + GPT-4o-mini</Badge>
             </div>
           </div>
 
@@ -468,15 +609,12 @@ export function UploadEngine() {
             </motion.div>
             <h3 className="text-2xl font-semibold text-white">Taruh video panjang di sini</h3>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-white/60">
-              Format MP4, MOV, AVI, MKV, atau WebM. Setelah file masuk, ClipForge akan upload, menganalisis, lalu membuka halaman review clip secara otomatis.
+              Format MP4, MOV, AVI, MKV, atau WebM. Sesudah upload selesai, backend akan memproses 3 clip kandidat otomatis.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Button type="button" className="gap-2">
+              <Button type="button" className="gap-2" disabled={working}>
                 <Film className="h-4 w-4" />
-                Pilih Video
-              </Button>
-              <Button type="button" variant="outline" onClick={(event) => { event.stopPropagation(); activateDemoMode(); }}>
-                Coba tanpa upload
+                {working ? "Sedang Memproses..." : "Pilih Video"}
               </Button>
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-xs text-white/45">
@@ -487,12 +625,11 @@ export function UploadEngine() {
             <input
               ref={inputRef}
               hidden
-              multiple
               type="file"
               accept={ACCEPTED_TYPES.join(",")}
               onChange={(event) => {
                 if (event.target.files?.length) {
-                  handleFiles(event.target.files);
+                  void handleFiles(event.target.files);
                 }
               }}
             />
@@ -503,12 +640,12 @@ export function UploadEngine() {
               <div className="mb-3 flex items-center gap-2">
                 <Youtube className="h-4 w-4 text-red-300" />
                 <Link2 className="h-4 w-4 text-cyan-300" />
-                <p className="text-sm font-medium text-white">Atau impor dari YouTube / Google Drive</p>
+                <p className="text-sm font-medium text-white">Import URL</p>
               </div>
               <Input
                 value={urlValue}
                 onChange={(event) => setUrlValue(event.target.value)}
-                placeholder="Tempel link video di sini"
+                placeholder="Fitur ini belum aktif. Gunakan upload file langsung untuk pipeline real."
               />
             </div>
             <Button className="h-auto min-h-[56px] px-6" onClick={handleImportUrl} disabled={working}>
@@ -525,7 +662,7 @@ export function UploadEngine() {
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {recentProjects.length === 0 ? (
               <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-5 text-sm text-white/55 md:col-span-3">
-                Project terbaru akan muncul di sini setelah proses upload dan analisis selesai.
+                Project terbaru akan muncul di sini setelah backend selesai memotong clip.
               </div>
             ) : null}
             {recentProjects.map((project) => (
@@ -553,8 +690,8 @@ export function UploadEngine() {
       <Card className="space-y-5">
         <div>
           <p className="section-eyebrow">Status</p>
-          <p className="mt-3 text-2xl font-semibold text-white">Indikator proses yang lebih jujur dan ringkas.</p>
-          <p className="mt-2 text-sm text-white/55">Kamu cukup lihat satu tempat ini untuk tahu file sedang di tahap mana dan apa langkah berikutnya.</p>
+          <p className="mt-3 text-2xl font-semibold text-white">Progress backend yang sedang berjalan.</p>
+          <p className="mt-2 text-sm text-white/55">Panel ini membaca status nyata dari FastAPI, bukan simulasi.</p>
         </div>
 
         <div className="rounded-[28px] border border-white/10 bg-black/20 p-5">
@@ -562,19 +699,12 @@ export function UploadEngine() {
             <div>
               <p className="font-medium text-white">{activeUploadName ?? "Belum ada video aktif"}</p>
               <p className="mt-2 text-sm leading-6 text-white/60">{flowMessage}</p>
+              {currentProjectId ? (
+                <p className="mt-2 text-xs uppercase tracking-[0.18em] text-white/40">Project ID: {currentProjectId}</p>
+              ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge>
-                {flowStage === "idle"
-                  ? "siap"
-                  : flowStage === "uploading"
-                    ? "upload"
-                    : flowStage === "analyzing"
-                      ? "reviewing"
-                      : flowStage === "ready"
-                        ? "siap review"
-                        : "error"}
-              </Badge>
+              <Badge>{displayStage === "idle" ? "siap" : displayStage}</Badge>
               {working ? (
                 <Button type="button" variant="outline" size="sm" className="gap-2" onClick={cancelActiveUpload}>
                   <XCircle className="h-4 w-4" />
@@ -583,23 +713,13 @@ export function UploadEngine() {
               ) : null}
             </div>
           </div>
-          <Progress className="mt-4" value={flowProgress} />
+          <Progress className="mt-4" value={displayProgress} />
         </div>
 
         <div className="grid gap-3">
           {SIMPLE_FLOW.map((step, index) => {
-            const activeIndex =
-              flowStage === "idle"
-                ? -1
-                : flowStage === "uploading"
-                  ? 0
-                  : flowStage === "analyzing"
-                    ? 1
-                    : flowStage === "ready"
-                      ? 3
-                      : 0;
-            const complete = index < activeIndex || flowStage === "ready";
-            const active = index === activeIndex && flowStage !== "ready";
+            const complete = index < activeIndex || displayStage === "ready";
+            const active = index === activeIndex && displayStage !== "ready";
 
             return (
               <div key={step.id} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
@@ -624,11 +744,11 @@ export function UploadEngine() {
         </div>
 
         <div className="rounded-[28px] border border-cyan-300/15 bg-cyan-300/8 p-5">
-          <p className="font-medium text-white">Flow baru yang dituju</p>
+          <p className="font-medium text-white">Pipeline backend yang aktif</p>
           <div className="mt-3 space-y-2 text-sm text-white/65">
-            <p>Upload harus langsung terasa jalan, bukan diam di halaman yang sama.</p>
-            <p>Review clip harus jadi tujuan pertama sesudah upload berhasil.</p>
-            <p>Download MP4 harus lebih utama daripada paket teknis lain.</p>
+            <p>1. Upload video ke `/api/upload` dengan progress nyata.</p>
+            <p>2. Trigger `/api/process/{'{project_id}'}` untuk Whisper dan GPT-4o-mini.</p>
+            <p>3. Poll `/api/status/{'{project_id}'}` sampai clip siap direview.</p>
           </div>
         </div>
       </Card>

@@ -5,6 +5,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 import { DEFAULT_PREFERENCES, DEMO_PROJECTS, DEFAULT_PROJECT_SETTINGS } from "@/lib/demo-data";
 import { getProcessingSnapshot } from "@/modules/analysis/AnalysisEngine";
+import { generateMetadataBundle } from "@/modules/metadata/MetadataEngine";
+import { generateThumbnailVariants } from "@/modules/thumbnail/ThumbnailEngine";
 import {
   CaptionCue,
   ClipCandidate,
@@ -21,13 +23,19 @@ import {
   ProjectHistory,
   ProcessingStep,
   Platform,
-  JobStatus
+  JobStatus,
+  GeneratedClip,
+  BackendProcessingStage
 } from "@/types";
 import { createId, createProjectDisplayName, svgToDataUri } from "@/lib/utils";
 
 interface ClipForgeState {
   hydrated: boolean;
   projects: Project[];
+  currentProjectId: string | null;
+  processingStage: BackendProcessingStage;
+  processingProgress: number;
+  clips: GeneratedClip[];
   queue: QueueItem[];
   preferences: AppPreferences;
   onboardingSeen: boolean;
@@ -38,6 +46,7 @@ interface ClipForgeState {
   updateQueueItem: (id: string, partial: Partial<QueueItem>) => void;
   removeQueueItem: (id: string) => void;
   createProjectFromUpload: (upload: UploadDescriptor) => Project;
+  removeProject: (projectId: string) => void;
   upsertProject: (project: Project) => void;
   updateProject: (projectId: string, updater: (project: Project) => Project) => void;
   approveClip: (projectId: string, clipId: string) => void;
@@ -48,6 +57,10 @@ interface ClipForgeState {
   redoProjectEdit: (projectId: string) => void;
   canUndoProjectEdit: (projectId: string) => boolean;
   canRedoProjectEdit: (projectId: string) => boolean;
+  setCurrentProjectId: (projectId: string | null) => void;
+  setProcessingStatus: (stage: BackendProcessingStage, progress: number) => void;
+  setGeneratedClips: (projectId: string, clips: GeneratedClip[]) => void;
+  resetProcessingState: () => void;
   setPreferences: (preferences: Partial<AppPreferences>) => void;
   markOnboardingSeen: () => void;
   resetWorkspace: () => void;
@@ -139,6 +152,26 @@ function normalizeBreakdown(value: unknown): ViralScoreBreakdown {
   };
 }
 
+function normalizeGeneratedClip(value: unknown, index: number): GeneratedClip {
+  const raw = asRecord(value);
+  const startSec = Math.max(0, asNumber(raw.startSec ?? raw.start_sec, index * 12));
+  const endSec = Math.max(startSec + 1, asNumber(raw.endSec ?? raw.end_sec, startSec + 30));
+
+  return {
+    id: asString(raw.id, createId("clip")),
+    startSec,
+    endSec,
+    score: clamp(asNumber(raw.score, 80 - index * 5), 0, 100),
+    hookReason: asString(raw.hookReason ?? raw.hook_reason, "Segmen ini dipilih karena punya hook yang cukup kuat."),
+    captionSuggestion: asString(
+      raw.captionSuggestion ?? raw.caption_suggestion,
+      "Potongan ini punya kalimat yang paling mudah dijadikan short-form caption."
+    ),
+    filename: asString(raw.filename, `clip_${index + 1}.mp4`),
+    downloadUrl: asString(raw.downloadUrl ?? raw.download_url, "")
+  };
+}
+
 function normalizePlatforms(value: unknown): Platform[] {
   const allowed: Platform[] = ["tiktok", "instagram", "youtube", "square"];
   const platforms = Array.isArray(value)
@@ -195,7 +228,8 @@ function normalizeClip(
     status: raw.status === "suggested" || raw.status === "approved" || raw.status === "rendered"
       ? raw.status
       : "approved",
-    previewImage: preferredPreviewImage ?? asString(raw.previewImage, fallbackImage)
+    previewImage: preferredPreviewImage ?? asString(raw.previewImage, fallbackImage),
+    downloadUrl: asOptionalString(raw.downloadUrl ?? raw.download_url)
   };
 }
 
@@ -393,6 +427,87 @@ function normalizeProject(value: unknown): Project {
   };
 }
 
+function generatedClipToCandidate(project: Project, generatedClip: GeneratedClip, index: number): ClipCandidate {
+  const durationSec = Math.max(1, generatedClip.endSec - generatedClip.startSec);
+  const score = clamp(generatedClip.score, 0, 100);
+
+  return {
+    id: generatedClip.id,
+    projectId: project.id,
+    title: `Clip ${index + 1} · Score ${score}`,
+    description: generatedClip.hookReason,
+    startSec: generatedClip.startSec,
+    endSec: generatedClip.endSec,
+    durationSec,
+    viralScore: score,
+    breakdown: {
+      hook: score,
+      emotion: clamp(score - 6, 0, 100),
+      value: clamp(score - 4, 0, 100),
+      narrative: clamp(score - 8, 0, 100),
+      quotability: clamp(score - 2, 0, 100),
+      platformFit: clamp(score - 5, 0, 100),
+      trendAlignment: clamp(score - 10, 0, 100),
+      engagementPrediction: clamp(score - 3, 0, 100)
+    },
+    whyItWorks: [generatedClip.hookReason],
+    hookLine: generatedClip.captionSuggestion,
+    transcript: [
+      {
+        id: `${generatedClip.id}_segment`,
+        startMs: Math.round(generatedClip.startSec * 1000),
+        endMs: Math.round(generatedClip.endSec * 1000),
+        text: generatedClip.captionSuggestion,
+        confidence: 0.94,
+        words: generatedClip.captionSuggestion.split(" ").filter(Boolean).map((word, wordIndex) => ({
+          startMs: Math.round(generatedClip.startSec * 1000) + wordIndex * 320,
+          endMs: Math.round(generatedClip.startSec * 1000) + wordIndex * 320 + 260,
+          word,
+          confidence: 0.92
+        }))
+      }
+    ],
+    platforms: ["tiktok", "instagram", "youtube"],
+    contentType: "education",
+    sentiment: "positive",
+    status: "approved",
+    previewImage: project.asset.thumbnail,
+    downloadUrl: generatedClip.downloadUrl
+  };
+}
+
+function applyGeneratedClips(project: Project, generatedClips: GeneratedClip[]): Project {
+  const clipCandidates = generatedClips.map((generatedClip, index) => generatedClipToCandidate(project, generatedClip, index));
+  const captions = Object.fromEntries(
+    clipCandidates.map((clip, index) => [
+      clip.id,
+      [
+        {
+          id: `cue_${clip.id}`,
+          startMs: 0,
+          endMs: Math.round(clip.durationSec * 1000),
+          text: generatedClips[index]?.captionSuggestion ?? clip.hookLine
+        } satisfies CaptionCue
+      ]
+    ])
+  );
+  const thumbnails = Object.fromEntries(clipCandidates.map((clip) => [clip.id, generateThumbnailVariants(clip)]));
+  const metadata = Object.fromEntries(clipCandidates.map((clip) => [clip.id, generateMetadataBundle(clip)]));
+
+  return {
+    ...project,
+    status: "ready",
+    progress: 100,
+    clips: clipCandidates,
+    captions,
+    thumbnails,
+    metadata,
+    processingSteps: getProcessingSnapshot(100).steps,
+    insight: clipCandidates[0]?.description ?? "Clip terbaik sudah siap direview.",
+    updatedAt: new Date().toISOString()
+  };
+}
+
 function cloneProject(project: Project): Project {
   return JSON.parse(JSON.stringify(project)) as Project;
 }
@@ -451,6 +566,10 @@ export const useClipForgeStore = create<ClipForgeState>()(
     (set, get) => ({
       hydrated: false,
       projects: [],
+      currentProjectId: null,
+      processingStage: "idle",
+      processingProgress: 0,
+      clips: [],
       queue: [],
       preferences: DEFAULT_PREFERENCES,
       onboardingSeen: false,
@@ -471,7 +590,7 @@ export const useClipForgeStore = create<ClipForgeState>()(
       removeQueueItem: (id) => set((state) => ({ queue: state.queue.filter((item) => item.id !== id) })),
       createProjectFromUpload: (upload) => {
         const project: Project = {
-          id: createId("project"),
+          id: upload.projectId ?? createId("project"),
           name: createProjectDisplayName(upload.name),
           status: "queued",
           createdAt: new Date().toISOString(),
@@ -502,9 +621,18 @@ export const useClipForgeStore = create<ClipForgeState>()(
 
         const normalizedProject = normalizeProject(project);
 
-        set((state) => ({ projects: [normalizedProject, ...state.projects] }));
+        set((state) => ({
+          currentProjectId: normalizedProject.id,
+          projects: [normalizedProject, ...state.projects.filter((item) => item.id !== normalizedProject.id)]
+        }));
         return normalizedProject;
       },
+      removeProject: (projectId) =>
+        set((state) => ({
+          projects: state.projects.filter((project) => project.id !== projectId),
+          currentProjectId: state.currentProjectId === projectId ? null : state.currentProjectId,
+          clips: state.currentProjectId === projectId ? [] : state.clips
+        })),
       upsertProject: (project) =>
         set((state) => ({
           projects: state.projects.some((item) => item.id === project.id)
@@ -643,6 +771,29 @@ export const useClipForgeStore = create<ClipForgeState>()(
         }),
       canUndoProjectEdit: (projectId) => (get().editorHistory[projectId]?.past.length ?? 0) > 0,
       canRedoProjectEdit: (projectId) => (get().editorHistory[projectId]?.future.length ?? 0) > 0,
+      setCurrentProjectId: (projectId) => set({ currentProjectId: projectId }),
+      setProcessingStatus: (stage, progress) =>
+        set({
+          processingStage: stage,
+          processingProgress: clamp(progress, 0, 100)
+        }),
+      setGeneratedClips: (projectId, clips) =>
+        set((state) => ({
+          currentProjectId: projectId,
+          clips: clips.map((clip, index) => normalizeGeneratedClip(clip, index)),
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? normalizeProject(applyGeneratedClips(project, clips.map((clip, index) => normalizeGeneratedClip(clip, index))))
+              : project
+          )
+        })),
+      resetProcessingState: () =>
+        set({
+          currentProjectId: null,
+          processingStage: "idle",
+          processingProgress: 0,
+          clips: []
+        }),
       setPreferences: (preferences) =>
         set((state) => ({
           preferences: {
@@ -654,6 +805,10 @@ export const useClipForgeStore = create<ClipForgeState>()(
       resetWorkspace: () =>
         set({
           projects: [],
+          currentProjectId: null,
+          processingStage: "idle",
+          processingProgress: 0,
+          clips: [],
           queue: [],
           onboardingSeen: false,
           editorHistory: {}
@@ -664,6 +819,10 @@ export const useClipForgeStore = create<ClipForgeState>()(
       storage,
       partialize: (state) => ({
         projects: state.projects,
+        currentProjectId: state.currentProjectId,
+        processingStage: state.processingStage,
+        processingProgress: state.processingProgress,
+        clips: state.clips,
         preferences: state.preferences,
         onboardingSeen: state.onboardingSeen
       }),
@@ -677,6 +836,21 @@ export const useClipForgeStore = create<ClipForgeState>()(
           projects: Array.isArray(persisted.projects)
             ? persisted.projects.map((project) => normalizeProject(project))
             : currentState.projects,
+          currentProjectId: typeof persisted.currentProjectId === "string" ? persisted.currentProjectId : currentState.currentProjectId,
+          processingStage:
+            persisted.processingStage === "uploading" ||
+            persisted.processingStage === "transcribing" ||
+            persisted.processingStage === "scoring" ||
+            persisted.processingStage === "cutting" ||
+            persisted.processingStage === "ready" ||
+            persisted.processingStage === "error" ||
+            persisted.processingStage === "idle"
+              ? persisted.processingStage
+              : currentState.processingStage,
+          processingProgress: asNumber(persisted.processingProgress, currentState.processingProgress),
+          clips: Array.isArray(persisted.clips)
+            ? persisted.clips.map((clip, index) => normalizeGeneratedClip(clip, index))
+            : currentState.clips,
           preferences: {
             ...DEFAULT_PREFERENCES,
             ...preferences

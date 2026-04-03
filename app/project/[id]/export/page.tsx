@@ -100,6 +100,7 @@ export default function ExportPage() {
     >
       <WorkflowStepper current="download" />
       <ExportCenter
+        projectId={project.id}
         clip={clip}
         metadata={project.metadata[clip.id]}
         asset={project.asset}

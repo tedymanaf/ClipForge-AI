@@ -94,13 +94,13 @@ export default function ClipDetailPage() {
               Kembali ke Review
             </Button>
           </Link>
-          <Link href={`/project/${project.id}/export?clipId=${clip.id}`}>
-            <Button className="gap-2">
+          <a href={clip.downloadUrl || `/api/download/${project.id}/${clip.id}`} download>
+            <Button className="gap-2" type="button">
               <Download className="h-4 w-4" />
               Download MP4
               <ArrowRight className="h-4 w-4" />
             </Button>
-          </Link>
+          </a>
         </>
       }
     >

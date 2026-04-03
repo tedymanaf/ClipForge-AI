@@ -1,5 +1,6 @@
 export type UploadSource = "file" | "youtube" | "google-drive" | "demo";
 export type JobStatus = "idle" | "uploading" | "queued" | "processing" | "ready" | "error";
+export type BackendProcessingStage = "idle" | "uploading" | "transcribing" | "scoring" | "cutting" | "ready" | "error";
 export type Platform = "tiktok" | "instagram" | "youtube" | "square";
 export type CaptionStyleId =
   | "bold-fire"
@@ -70,6 +71,7 @@ export interface ClipCandidate {
   sentiment: "positive" | "neutral" | "controversial";
   status: "suggested" | "approved" | "rendered";
   previewImage: string;
+  downloadUrl?: string;
 }
 
 export interface CaptionCue {
@@ -151,6 +153,17 @@ export interface Project {
   settings: ProjectSettings;
 }
 
+export interface GeneratedClip {
+  id: string;
+  startSec: number;
+  endSec: number;
+  score: number;
+  hookReason: string;
+  captionSuggestion: string;
+  filename: string;
+  downloadUrl: string;
+}
+
 export interface QueueItem {
   id: string;
   name: string;
@@ -161,6 +174,7 @@ export interface QueueItem {
 
 export interface UploadDescriptor {
   id: string;
+  projectId?: string;
   serverAssetId?: string;
   name: string;
   file?: File;
