@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const projects = useClipForgeStore((state) => state.projects);
   const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
+  const resetWorkspace = useClipForgeStore((state) => state.resetWorkspace);
   const project = projects[0];
 
   useEffect(() => {
@@ -77,6 +78,15 @@ export default function DashboardPage() {
       totalDurationSec
     };
   }, [projects]);
+
+  function handleResetWorkspace() {
+    if (!window.confirm("Hapus semua project lokal, queue, dan onboarding dari browser ini?")) {
+      return;
+    }
+
+    resetWorkspace();
+    router.replace("/dashboard");
+  }
 
   return (
     <>
@@ -189,6 +199,14 @@ export default function DashboardPage() {
                 <p className="font-medium text-white">Buka perpustakaan clip</p>
                 <p className="mt-2 text-sm leading-6 text-white/60">Review clip kandidat terbaik dan lompat langsung ke editor.</p>
               </Link>
+              <button
+                type="button"
+                onClick={handleResetWorkspace}
+                className="block w-full rounded-[24px] border border-rose-300/15 bg-rose-300/8 p-4 text-left transition hover:bg-rose-300/12"
+              >
+                <p className="font-medium text-white">Reset workspace lokal</p>
+                <p className="mt-2 text-sm leading-6 text-white/60">Pakai ini kalau data lama bentrok, link project terasa aneh, atau kamu ingin mulai bersih lagi.</p>
+              </button>
             </div>
 
             <div className="rounded-[28px] border border-cyan-300/15 bg-cyan-300/8 p-5">

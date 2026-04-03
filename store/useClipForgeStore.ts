@@ -23,7 +23,7 @@ import {
   Platform,
   JobStatus
 } from "@/types";
-import { createId, svgToDataUri } from "@/lib/utils";
+import { createId, createProjectDisplayName, svgToDataUri } from "@/lib/utils";
 
 interface ClipForgeState {
   hydrated: boolean;
@@ -50,6 +50,7 @@ interface ClipForgeState {
   canRedoProjectEdit: (projectId: string) => boolean;
   setPreferences: (preferences: Partial<AppPreferences>) => void;
   markOnboardingSeen: () => void;
+  resetWorkspace: () => void;
 }
 
 const storage = createJSONStorage(() => localStorage);
@@ -290,10 +291,12 @@ function normalizeProcessingStep(value: unknown, index: number): ProcessingStep 
 function normalizeProject(value: unknown): Project {
   const raw = asRecord(value);
   const projectId = asString(raw.id, createId("project"));
-  const projectName = asString(raw.name, "Recovered Project");
+  const rawProjectName = asString(raw.name, "Recovered Project");
   const createdAt = asString(raw.createdAt, new Date().toISOString());
   const updatedAt = asString(raw.updatedAt, createdAt);
   const rawAsset = asRecord(raw.asset);
+  const assetName = asString(rawAsset.name, `${rawProjectName}.mp4`);
+  const projectName = createProjectDisplayName(rawProjectName) || createProjectDisplayName(assetName) || rawProjectName;
   const fallbackThumbnail = createFallbackThumbnail(projectName);
   const assetSource =
     rawAsset.source === "file" || rawAsset.source === "youtube" || rawAsset.source === "google-drive" || rawAsset.source === "demo"
@@ -333,7 +336,7 @@ function normalizeProject(value: unknown): Project {
     updatedAt,
     asset: {
       id: asString(rawAsset.id, createId("asset")),
-      name: asString(rawAsset.name, `${projectName}.mp4`),
+      name: assetName,
       source: assetSource,
       path: asOptionalString(rawAsset.path),
       url: asOptionalString(rawAsset.url),
@@ -469,7 +472,7 @@ export const useClipForgeStore = create<ClipForgeState>()(
       createProjectFromUpload: (upload) => {
         const project: Project = {
           id: createId("project"),
-          name: upload.name.replace(/\.[a-z0-9]+$/i, ""),
+          name: createProjectDisplayName(upload.name),
           status: "queued",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -647,7 +650,14 @@ export const useClipForgeStore = create<ClipForgeState>()(
             ...preferences
           }
         })),
-      markOnboardingSeen: () => set({ onboardingSeen: true })
+      markOnboardingSeen: () => set({ onboardingSeen: true }),
+      resetWorkspace: () =>
+        set({
+          projects: [],
+          queue: [],
+          onboardingSeen: false,
+          editorHistory: {}
+        })
     }),
     {
       name: "clipforge-ai-store",

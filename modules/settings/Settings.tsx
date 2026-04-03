@@ -10,11 +10,20 @@ import { useClipForgeStore } from "@/store/useClipForgeStore";
 export function Settings() {
   const preferences = useClipForgeStore((state) => state.preferences);
   const setPreferences = useClipForgeStore((state) => state.setPreferences);
+  const resetWorkspace = useClipForgeStore((state) => state.resetWorkspace);
   const [draft, setDraft] = useState(preferences);
 
   useEffect(() => {
     setDraft(preferences);
   }, [preferences]);
+
+  function handleResetWorkspace() {
+    if (!window.confirm("Hapus semua project lokal, queue, dan onboarding dari browser ini?")) {
+      return;
+    }
+
+    resetWorkspace();
+  }
 
   return (
     <div className="space-y-6">
@@ -148,6 +157,24 @@ export function Settings() {
           </div>
         </Card>
       </div>
+
+      <Card className="space-y-4">
+        <div>
+          <p className="font-medium text-white">Recovery Tools</p>
+          <p className="text-sm text-white/55">
+            Kalau data lama di browser membuat daftar project terasa salah, tool ini membantu memulai ulang dengan cepat.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="rounded-[24px] border border-rose-300/15 bg-rose-300/8 p-4 text-sm leading-6 text-white/68">
+            Reset workspace akan menghapus project lokal yang tersimpan di browser ini. File sumber di server tidak ikut dihapus.
+          </div>
+          <Button variant="outline" className="border-rose-300/20 bg-rose-300/8 hover:bg-rose-300/12" onClick={handleResetWorkspace}>
+            Reset Workspace Lokal
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }

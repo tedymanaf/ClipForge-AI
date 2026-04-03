@@ -38,6 +38,27 @@ export function createId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+export function createProjectDisplayName(rawName: string) {
+  const withoutExtension = rawName.replace(/\.[a-z0-9]+$/i, "");
+  const segments = withoutExtension.split(/[-_]+/).filter(Boolean);
+  let startIndex = 0;
+
+  while (startIndex < segments.length) {
+    const segment = segments[startIndex];
+    const looksLikeUuid = /^[a-f0-9]{8,}$/i.test(segment) || /^[a-f0-9]{4,}$/i.test(segment);
+    const looksLikeGeneratedPrefix = /^upload$/i.test(segment) || /^copy$/i.test(segment);
+
+    if (!looksLikeUuid && !looksLikeGeneratedPrefix) {
+      break;
+    }
+
+    startIndex += 1;
+  }
+
+  const cleaned = segments.slice(startIndex).join(" ").trim() || withoutExtension.trim();
+  return cleaned.replace(/\s+/g, " ").trim();
+}
+
 export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
