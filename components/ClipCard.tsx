@@ -33,7 +33,7 @@ export function ClipCard({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const projectId = project.id;
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [previewState, setPreviewState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [previewState, setPreviewState] = useState<"idle" | "loading" | "ready" | "fallback" | "error">("idle");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<"source" | "poster" | "solid" | null>(null);
   const [previewMessage, setPreviewMessage] = useState("Preview short sedang disiapkan.");
@@ -79,6 +79,10 @@ export function ClipCard({
     }
 
     let cancelled = false;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort("preview-timeout");
+    }, 8000);
 
     const runPreviewLoad = async () => {
       try {
@@ -90,6 +94,7 @@ export function ClipCard({
           headers: {
             "Content-Type": "application/json"
           },
+          signal: controller.signal,
           body: JSON.stringify({
             clip,
             asset: project.asset,
@@ -115,6 +120,7 @@ export function ClipCard({
           return;
         }
 
+        window.clearTimeout(timeoutId);
         setPreviewUrl((currentUrl) => {
           if (currentUrl) {
             window.URL.revokeObjectURL(currentUrl);
@@ -142,6 +148,17 @@ export function ClipCard({
           return;
         }
 
+        const isAbort = error instanceof DOMException && error.name === "AbortError";
+
+        if (isAbort || clip.previewImage) {
+          setPreviewMode("poster");
+          setPreviewState("fallback");
+          setPreviewMessage(
+            `Preview video ${platformLabels[selectedPreviewPlatform]} terlalu lama disiapkan. Saya tampilkan poster clip dulu supaya review tetap jalan.`
+          );
+          return;
+        }
+
         setPreviewMode(null);
         setPreviewState("error");
         setPreviewMessage(error instanceof Error ? error.message : "Preview clip gagal disiapkan.");
@@ -152,6 +169,8 @@ export function ClipCard({
 
     return () => {
       cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeoutId);
     };
   }, [clip, isPreviewOpen, project.asset, selectedPreviewPlatform]);
 
@@ -186,6 +205,12 @@ export function ClipCard({
     setIsPreviewOpen(false);
     setPreviewState("idle");
     setPreviewMode(null);
+    setPreviewUrl((currentUrl) => {
+      if (currentUrl) {
+        window.URL.revokeObjectURL(currentUrl);
+      }
+      return null;
+    });
     setPreviewMessage("Preview short sedang disiapkan.");
   }
 
@@ -383,13 +408,40 @@ export function ClipCard({
                     loop
                     playsInline
                     preload="auto"
+                    onError={() => {
+                      setPreviewMode("poster");
+                      setPreviewState("fallback");
+                      setPreviewMessage(
+                        `Video preview ${platformLabels[selectedPreviewPlatform]} gagal diputar. Saya tampilkan poster clip agar kamu tetap bisa review.`
+                      );
+                    }}
                     className="aspect-[9/16] w-full bg-black object-contain"
                   />
+                ) : previewState === "fallback" && clip.previewImage ? (
+                  <div className="relative aspect-[9/16] w-full bg-black">
+                    <img
+                      src={clip.previewImage}
+                      alt={`Poster preview ${clip.title}`}
+                      className="h-full w-full object-contain"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6 text-center text-sm text-white/80">
+                      {previewMessage}
+                    </div>
+                  </div>
                 ) : previewState === "loading" ? (
-                  <div className="flex aspect-[9/16] items-center justify-center p-6 text-center text-sm text-white/70">
-                    <div className="flex flex-col items-center gap-3">
-                      <Loader2 className="h-6 w-6 animate-spin text-cyan-200" />
-                      <p>{previewMessage}</p>
+                  <div className="relative aspect-[9/16] w-full bg-black">
+                    {clip.previewImage ? (
+                      <img
+                        src={clip.previewImage}
+                        alt={`Poster ${clip.title}`}
+                        className="h-full w-full object-contain opacity-45"
+                      />
+                    ) : null}
+                    <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-white/70">
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="h-6 w-6 animate-spin text-cyan-200" />
+                        <p>{previewMessage}</p>
+                      </div>
                     </div>
                   </div>
                 ) : previewState === "error" ? (
@@ -445,6 +497,8 @@ export function ClipCard({
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/65">
                   {previewState === "error"
                     ? previewMessage
+                    : previewState === "fallback"
+                      ? previewMessage
                     : previewMode === "source"
                       ? `Mode preview aktif: ${platformLabels[selectedPreviewPlatform]} dari footage asli.`
                       : previewMode === "poster"
