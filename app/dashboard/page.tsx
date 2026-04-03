@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
+  CheckCircle2,
   Clapperboard,
   Film,
   FolderKanban,
@@ -29,18 +30,18 @@ import { useClipForgeStore } from "@/store/useClipForgeStore";
 const workflowHighlights = [
   {
     icon: FolderKanban,
-    title: "Workspace terhubung",
-    description: "Projects, clips, metadata, caption, thumbnail, dan export bundle tinggal satu alur."
+    title: "Alur tetap utuh",
+    description: "Upload, transcript, clip, caption, thumbnail, dan export tetap berada di satu konteks project."
   },
   {
     icon: WandSparkles,
-    title: "Review yang dipandu AI",
-    description: "Hook explanation dan ranking langsung terlihat tanpa harus buka banyak panel."
+    title: "Draft dibantu AI",
+    description: "ClipForge memberi titik awal yang jelas, lalu kamu tinggal review dan memutuskan hasil akhirnya."
   },
   {
     icon: TimerReset,
-    title: "Putaran kerja lebih cepat",
-    description: "Fallback export dan project routing menjaga workflow tetap jalan meski source bermasalah."
+    title: "Ramah untuk prototyping",
+    description: "Mode demo, fallback export, dan penyimpanan lokal memudahkan pengujian tanpa setup berat."
   }
 ];
 
@@ -85,7 +86,7 @@ export default function DashboardPage() {
         eyebrow="Workspace ClipForge"
         actions={
           <>
-            <Badge className="hidden md:inline-flex">Bahasa Indonesia ready</Badge>
+            <Badge className="hidden md:inline-flex border-white/10 bg-white/[0.06] text-white/80">Bahasa Indonesia aktif</Badge>
             <Link href="/dashboard#upload">
               <Button className="gap-2">
                 Upload Video
@@ -95,41 +96,39 @@ export default function DashboardPage() {
           </>
         }
       >
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <Card className="relative overflow-hidden">
-            <div className="absolute left-[-80px] top-[-70px] h-48 w-48 rounded-full bg-primary/20 blur-3xl" />
-            <div className="absolute bottom-[-80px] right-[-50px] h-48 w-48 rounded-full bg-cyan-400/15 blur-3xl" />
+            <div className="absolute left-[-5rem] top-[-4rem] h-44 w-44 rounded-full bg-primary/16 blur-3xl" />
+            <div className="absolute bottom-[-5rem] right-[-3rem] h-44 w-44 rounded-full bg-cyan-400/14 blur-3xl" />
             <div className="relative space-y-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">Ringkasan Workspace</p>
-                  <h2 className="mt-3 text-3xl font-semibold text-white">Semua hal penting dari pipeline sekarang ada di satu control center.</h2>
+                  <p className="section-eyebrow">Control Center</p>
+                  <h2 className="mt-3 text-3xl font-semibold text-white">
+                    Semua langkah penting sekarang lebih ringkas dan lebih mudah dibaca.
+                  </h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60">
-                    Upload baru, project aktif, clip siap review, dan insight performa disusun supaya kamu cepat tahu langkah berikutnya.
+                    Dashboard ini dirapikan supaya kamu cepat tahu kondisi project, langkah berikutnya, dan area mana
+                    yang perlu direview dulu.
                   </p>
                 </div>
                 <Badge className="w-fit border-emerald-300/20 bg-emerald-300/10 text-emerald-100">
-                  {overview.readyProjects} project siap
+                  {overview.readyProjects} project siap review
                 </Badge>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-4">
-                <div className="rounded-[24px] border border-white/10 bg-black/20 px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/40">Projects</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{overview.totalProjects}</p>
-                </div>
-                <div className="rounded-[24px] border border-white/10 bg-black/20 px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/40">Siap</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{overview.readyProjects}</p>
-                </div>
-                <div className="rounded-[24px] border border-white/10 bg-black/20 px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/40">Clips</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{overview.totalClips}</p>
-                </div>
-                <div className="rounded-[24px] border border-white/10 bg-black/20 px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/40">Source time</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{formatDuration(overview.totalDurationSec)}</p>
-                </div>
+                {[
+                  { label: "Total Project", value: overview.totalProjects.toString() },
+                  { label: "Siap Review", value: overview.readyProjects.toString() },
+                  { label: "Total Clip", value: overview.totalClips.toString() },
+                  { label: "Durasi Sumber", value: formatDuration(overview.totalDurationSec) }
+                ].map((item) => (
+                  <div key={item.label} className="surface-muted px-4 py-4">
+                    <p className="text-xs uppercase tracking-[0.24em] text-white/38">{item.label}</p>
+                    <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
+                  </div>
+                ))}
               </div>
 
               {project ? (
@@ -139,17 +138,13 @@ export default function DashboardPage() {
                     style={project.asset.thumbnail ? { backgroundImage: `url("${project.asset.thumbnail}")` } : undefined}
                   />
                   <div className="space-y-3">
-                    <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                      <p className="text-xs uppercase tracking-[0.24em] text-white/40">Project utama</p>
+                    <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+                      <p className="text-xs uppercase tracking-[0.24em] text-white/40">Project Utama</p>
                       <p className="mt-2 text-xl font-semibold text-white">{project.name}</p>
-                      <p className="mt-2 text-sm leading-6 text-white/60">
-                        {project.insight}
-                      </p>
+                      <p className="mt-2 text-sm leading-6 text-white/60">{project.insight}</p>
                     </div>
                     <div className="flex flex-wrap gap-3 text-sm text-white/60">
-                      <span className="rounded-full border border-white/10 bg-black/20 px-3 py-2">
-                        {project.clips.length} clips
-                      </span>
+                      <span className="rounded-full border border-white/10 bg-black/20 px-3 py-2">{project.clips.length} clip</span>
                       <span className="rounded-full border border-white/10 bg-black/20 px-3 py-2">
                         {formatDuration(project.asset.durationSec)}
                       </span>
@@ -164,63 +159,67 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="rounded-[28px] border border-dashed border-white/10 bg-black/20 p-6 text-sm leading-6 text-white/55">
-                  Belum ada project aktif. Upload video baru atau buka demo mode untuk melihat seluruh pipeline.
+                  Belum ada project aktif. Upload video baru atau jalankan mode demo untuk melihat alur lengkapnya.
                 </div>
               )}
             </div>
           </Card>
 
-          <Card className="space-y-4">
+          <Card className="space-y-5">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">Langkah Berikutnya</p>
-              <p className="mt-3 text-2xl font-semibold text-white">Langkah tercepat untuk lanjut kerja.</p>
+              <p className="section-eyebrow">Langkah Berikutnya</p>
+              <p className="mt-3 text-2xl font-semibold text-white">Aksi tercepat untuk lanjut kerja hari ini.</p>
             </div>
 
             <div className="space-y-3">
-              <Link href="/dashboard#upload" className="block rounded-[24px] border border-white/10 bg-white/5 p-4 transition hover:bg-white/8">
-                <p className="font-medium text-white">Upload source baru</p>
-                <p className="mt-2 text-sm leading-6 text-white/60">Masukkan video panjang dan mulai pipeline dari awal.</p>
+              <Link href="/dashboard#upload" className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
+                <p className="font-medium text-white">Mulai project baru</p>
+                <p className="mt-2 text-sm leading-6 text-white/60">Upload video panjang dan biarkan ClipForge menyusun draft awal.</p>
               </Link>
               {project ? (
                 <Link
                   href={getProjectPrimaryRoute(project)}
-                  className="block rounded-[24px] border border-white/10 bg-white/5 p-4 transition hover:bg-white/8"
+                  className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]"
                 >
-                  <p className="font-medium text-white">Lanjutkan project teratas</p>
-                  <p className="mt-2 text-sm leading-6 text-white/60">Masuk kembali ke alur utama project yang paling baru.</p>
+                  <p className="font-medium text-white">Lanjutkan project terbaru</p>
+                  <p className="mt-2 text-sm leading-6 text-white/60">Masuk kembali ke titik kerja utama tanpa mencari-cari halaman.</p>
                 </Link>
               ) : null}
-              <Link href="/dashboard#library" className="block rounded-[24px] border border-white/10 bg-white/5 p-4 transition hover:bg-white/8">
-                <p className="font-medium text-white">Review clip library</p>
-                <p className="mt-2 text-sm leading-6 text-white/60">Lihat candidate terbaik dan langsung lompat ke editor.</p>
+              <Link href="/dashboard#library" className="block rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
+                <p className="font-medium text-white">Buka perpustakaan clip</p>
+                <p className="mt-2 text-sm leading-6 text-white/60">Review clip kandidat terbaik dan lompat langsung ke editor.</p>
               </Link>
             </div>
 
             <div className="rounded-[28px] border border-cyan-300/15 bg-cyan-300/8 p-5">
-              <p className="font-medium text-white">Target pemrosesan</p>
+              <p className="font-medium text-white">Standar pengalaman yang dituju</p>
               <div className="mt-3 space-y-2 text-sm text-white/65">
-                <p>Pemrosesan dimulai kurang dari 3 detik setelah upload.</p>
-                <p>Clip pertama muncul kurang dari 2 menit untuk sumber 10 menit.</p>
-                <p>Transkripsi dan metadata Bahasa Indonesia aktif secara default.</p>
+                <p>Upload harus terasa jelas, bukan teknis dan membingungkan.</p>
+                <p>Pengguna harus tahu status project dalam satu pandangan.</p>
+                <p>Clip terbaik harus bisa ditemukan tanpa membuka banyak panel.</p>
               </div>
             </div>
           </Card>
         </section>
 
-        <section id="upload" className="scroll-mt-6">
+        <section id="upload" className="scroll-mt-6 space-y-4">
+          <div>
+            <p className="section-eyebrow">Mulai Dari Sini</p>
+            <h2 className="mt-3 text-3xl font-semibold text-white">Area upload dibuat lebih sederhana dan lebih mudah dimengerti.</h2>
+          </div>
           <UploadEngine />
         </section>
 
         <section id="projects" className="grid scroll-mt-6 gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Card className="space-y-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-white/8 p-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3">
                 <Film className="h-5 w-5 text-cyan-200" />
               </div>
               <div>
-                <p className="font-medium text-white">Video sumber terbaru</p>
+                <p className="font-medium text-white">Project aktif</p>
                 <p className="text-sm text-white/55">
-                  Setiap project menyimpan transcript, clip candidates, captions, thumbnails, dan metadata.
+                  Daftar ini menampilkan source terbaru beserta status dan ringkasan pentingnya.
                 </p>
               </div>
             </div>
@@ -231,9 +230,10 @@ export default function DashboardPage() {
                   Belum ada source video. Mulai dari upload atau aktifkan demo mode.
                 </div>
               ) : null}
+
               {projects.slice(0, 4).map((item) => (
                 <Link href={getProjectPrimaryRoute(item)} key={item.id}>
-                  <div className="grid gap-4 rounded-[24px] border border-white/10 bg-white/5 p-4 transition hover:bg-white/8 md:grid-cols-[112px_1fr]">
+                  <div className="grid gap-4 rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07] md:grid-cols-[112px_1fr]">
                     <div
                       className="aspect-video rounded-[20px] border border-white/10 bg-slate-950 bg-cover bg-center"
                       style={item.asset.thumbnail ? { backgroundImage: `url("${item.asset.thumbnail}")` } : undefined}
@@ -249,8 +249,8 @@ export default function DashboardPage() {
                         <Badge className="w-fit capitalize">{item.status}</Badge>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2 text-xs text-white/55">
-                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">{item.clips.length} clips</span>
-                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">{item.progress}% progress</span>
+                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">{item.clips.length} clip</span>
+                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">{item.progress}% progres</span>
                       </div>
                     </div>
                   </div>
@@ -261,9 +261,9 @@ export default function DashboardPage() {
 
           <Card className="space-y-5">
             <div>
-              <p className="font-medium text-white">Sorotan workflow</p>
+              <p className="font-medium text-white">Kenapa dashboard ini terasa lebih ringan</p>
               <p className="text-sm text-white/55">
-                Landing, dashboard, dan halaman project sekarang memakai ritme visual yang sama supaya orientasi lebih cepat.
+                Hirarki visual dibuat lebih jelas: kondisi saat ini, langkah berikutnya, lalu detail pendukung.
               </p>
             </div>
 
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                 return (
                   <div key={item.title} className="rounded-[24px] border border-white/10 bg-black/20 p-4">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/8">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]">
                         <Icon className="h-5 w-5 text-cyan-200" />
                       </div>
                       <div>
@@ -289,14 +289,14 @@ export default function DashboardPage() {
 
             <div className="grid gap-3 md:grid-cols-2">
               {[
-                "Whisper transcription with word timestamps",
-                "GPT-powered hook scoring and hook rewrite suggestions",
-                "Caption A/B variants and platform previews",
-                "No-watermark export bundles",
-                "Offline-friendly processing path",
-                "Series planning and virality explainers"
+                "Transcript dengan word timestamps",
+                "Penjelasan hook dan ranking clip",
+                "Preview platform dan variasi caption",
+                "Export bundle tanpa ribet",
+                "Mode lokal untuk prototipe",
+                "Arahan seri konten dari insight"
               ].map((item) => (
-                <div key={item} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+                <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/70">
                   {item}
                 </div>
               ))}
@@ -310,7 +310,7 @@ export default function DashboardPage() {
               <Sparkles className="h-5 w-5 text-cyan-200" />
               <div>
                 <p className="font-medium text-white">Perpustakaan Clip</p>
-                <p className="text-sm text-white/55">Tinjau clip dengan skor tertinggi lalu lompat langsung ke editor.</p>
+                <p className="text-sm text-white/55">Tempat tercepat untuk membandingkan kandidat dan masuk ke editor.</p>
               </div>
             </div>
             {project ? <Badge className="w-fit">{project.name}</Badge> : null}
@@ -318,18 +318,20 @@ export default function DashboardPage() {
 
           {project ? (
             <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
-              {project.clips.map((clip) => <ClipCard key={clip.id} clip={clip} project={project} />)}
+              {project.clips.map((clip) => (
+                <ClipCard key={clip.id} clip={clip} project={project} />
+              ))}
             </div>
           ) : (
             <Card>
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/8">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]">
                   <Clapperboard className="h-5 w-5 text-cyan-200" />
                 </div>
                 <div>
                   <p className="font-medium text-white">Clip library masih kosong</p>
                   <p className="mt-2 text-sm leading-6 text-white/60">
-                    Upload video atau aktifkan demo mode untuk mengisi library dengan clip candidate.
+                    Upload video atau aktifkan demo mode untuk mengisi library dengan clip kandidat.
                   </p>
                 </div>
               </div>
@@ -338,13 +340,34 @@ export default function DashboardPage() {
         </section>
 
         {project ? (
-          <section id="analytics" className="scroll-mt-6 space-y-6">
+          <section id="analytics" className="scroll-mt-6 space-y-4">
+            <div>
+              <p className="section-eyebrow">Insight</p>
+              <h2 className="mt-3 text-3xl font-semibold text-white">Analitik tetap ada, tapi sekarang lebih mudah dicerna.</h2>
+            </div>
             <AnalyticsDashboard project={project} />
           </section>
         ) : null}
 
-        <section id="settings" className="scroll-mt-6 space-y-6">
+        <section id="settings" className="scroll-mt-6 space-y-4">
+          <div>
+            <p className="section-eyebrow">Konfigurasi</p>
+            <h2 className="mt-3 text-3xl font-semibold text-white">Pengaturan dibuat lebih jelas untuk tahap prototipe sampai integrasi produksi.</h2>
+          </div>
           <Settings />
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          {[
+            "Utamakan kejelasan alur dibanding efek visual berlebih.",
+            "Letakkan keputusan penting di bagian atas setiap halaman.",
+            "Anggap AI sebagai asisten editor, bukan autopilot penuh."
+          ].map((item) => (
+            <Card key={item} className="flex items-start gap-3">
+              <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-300" />
+              <p className="text-sm leading-6 text-white/68">{item}</p>
+            </Card>
+          ))}
         </section>
       </AppShell>
     </>

@@ -17,12 +17,12 @@ const display = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: "ClipForge AI",
-  description: "Upload Once. Go Viral Everywhere."
+  description: "Workspace AI untuk mengubah video panjang menjadi paket short-form yang siap review, edit, dan distribusi."
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="id" className="dark">
       <body className={`${inter.variable} ${display.variable} font-sans`}>
         <StoreBootstrap />
         {children}

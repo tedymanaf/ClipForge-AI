@@ -66,7 +66,7 @@ export default function ClipDetailPage() {
 
   if (!hydrated) {
     return (
-      <AppShell title="Loading clip" eyebrow="Manual Fine Tuning">
+      <AppShell title="Memuat clip" eyebrow="Editor Manual">
         <Card>
           <p className="text-white/70">Restoring clip data...</p>
         </Card>
@@ -76,7 +76,7 @@ export default function ClipDetailPage() {
 
   if (!project || !clip) {
     return (
-      <AppShell title="Recovering clip" eyebrow="Manual Fine Tuning">
+      <AppShell title="Memulihkan clip" eyebrow="Editor Manual">
         <Card>
           <p className="text-white/70">Clip tidak ditemukan. Mengarahkan ke clip yang tersedia...</p>
         </Card>
@@ -86,7 +86,7 @@ export default function ClipDetailPage() {
 
   if (!isProjectReadyForReview(project)) {
     return (
-      <AppShell title="Preparing clip" eyebrow="Manual Fine Tuning">
+      <AppShell title="Menyiapkan clip" eyebrow="Editor Manual">
         <Card>
           <p className="text-white/70">Project ini belum siap diedit. Mengarahkan ke halaman processing...</p>
         </Card>
@@ -97,7 +97,7 @@ export default function ClipDetailPage() {
   return (
     <AppShell
       title={clip.title}
-      eyebrow="Manual Fine Tuning"
+      eyebrow="Editor Manual"
       actions={
         <Link href={`/project/${project.id}/export?clipId=${clip.id}`}>
           <Button className="gap-2">

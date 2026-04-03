@@ -39,5 +39,5 @@ export function CardDescription({
   className?: string;
   children: ReactNode;
 }) {
-  return <p className={cn("text-sm text-white/60", className)}>{children}</p>;
+  return <p className={cn("text-sm leading-6 text-white/60", className)}>{children}</p>;
 }

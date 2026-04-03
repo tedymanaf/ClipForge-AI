@@ -19,10 +19,10 @@ export function Settings() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">Pengaturan Workspace</p>
-        <h2 className="mt-2 text-3xl font-semibold text-white">Kontrol API dan identitas brand dari satu panel.</h2>
+        <p className="section-eyebrow">Pengaturan Workspace</p>
+        <h2 className="mt-2 text-3xl font-semibold text-white">Kontrol API, brand, dan strategi integrasi dalam satu tempat.</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-white/60">
-          Pengaturan ini memengaruhi routing metadata, branding thumbnail, dan gaya output default di seluruh workspace.
+          Pengaturan ini memengaruhi perilaku prototipe, branding output, dan kesiapan saat aplikasi ingin diarahkan ke mode produksi.
         </p>
       </div>
 
@@ -30,7 +30,7 @@ export function Settings() {
         <Card className="space-y-5">
           <div>
             <p className="font-medium text-white">Kunci API</p>
-            <p className="text-sm text-white/55">Kunci disimpan secara lokal lewat persistence Zustand untuk prototipe ini.</p>
+            <p className="text-sm text-white/55">Kunci disimpan secara lokal lewat persistence Zustand untuk tahap prototipe ini.</p>
           </div>
 
           <div className="grid gap-3">
@@ -57,14 +57,14 @@ export function Settings() {
           </div>
 
           <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-sm leading-6 text-white/55">
-            Gunakan key yang berbeda untuk pengujian connector agar publish queue bisa divalidasi per platform.
+            Pakai kunci yang berbeda untuk pengujian kalau kamu ingin membandingkan stabilitas connector per platform.
           </div>
         </Card>
 
         <Card className="space-y-5">
           <div>
             <p className="font-medium text-white">Kit Brand</p>
-            <p className="text-sm text-white/55">Brand default yang dipakai untuk overlay thumbnail, suara metadata, dan lower third.</p>
+            <p className="text-sm text-white/55">Brand default untuk thumbnail, metadata, dan gaya visual output.</p>
           </div>
 
           <div className="grid gap-3">
@@ -102,6 +102,50 @@ export function Settings() {
           <Button onClick={() => setPreferences(draft)} className="w-full">
             Simpan pengaturan
           </Button>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <Card className="space-y-4">
+          <div>
+            <p className="font-medium text-white">Strategi AI yang disarankan</p>
+            <p className="text-sm text-white/55">
+              Untuk aplikasi seperti ini, paling aman memisahkan fungsi AI berdasarkan jenis pekerjaan.
+            </p>
+          </div>
+
+          <div className="grid gap-3">
+            {[
+              "Transkripsi: prioritaskan provider speech-to-text yang murah atau bisa dijalankan lokal.",
+              "Skor hook dan metadata: gunakan model teks yang hemat biaya dan cepat, karena request-nya sering.",
+              "Thumbnail atau rewrite kreatif: jadikan fitur opsional agar biaya tidak membebani alur utama."
+            ].map((item) => (
+              <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-white/68">
+                {item}
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div>
+            <p className="font-medium text-white">Catatan integrasi produksi</p>
+            <p className="text-sm text-white/55">
+              Arsitektur ClipForge saat ini cocok untuk bertumbuh dari mode mock ke mode hybrid secara bertahap.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-[24px] border border-cyan-300/15 bg-cyan-300/8 p-4 text-sm leading-6 text-white/70">
+              Mulai dari transkripsi dan analisis teks dulu. Dua area ini memberi dampak terbesar terhadap pengalaman pengguna.
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-sm leading-6 text-white/60">
+              Publish connector bisa tetap mock lebih lama, karena nilai utama aplikasi ini justru ada di proses review dan packaging.
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-sm leading-6 text-white/60">
+              Simpan konfigurasi sensitif di environment server saat masuk tahap produksi. Penyimpanan lokal hanya cocok untuk demo dan eksplorasi.
+            </div>
+          </div>
         </Card>
       </div>
     </div>

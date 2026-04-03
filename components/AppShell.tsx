@@ -2,7 +2,7 @@
 
 import { MouseEvent, ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
-import { BarChart3, Clapperboard, Home, Library, Settings2, UploadCloud } from "lucide-react";
+import { ArrowUpRight, BarChart3, Clapperboard, Home, Library, Settings2, UploadCloud } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
@@ -91,18 +91,31 @@ export function AppShell({
 
   return (
     <div className="min-h-screen">
-      <div className="mx-auto grid min-h-screen max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[280px_1fr]">
+      <div className="mx-auto grid min-h-screen max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[292px_1fr]">
         <aside className="glass-card sticky top-4 h-fit overflow-y-auto p-5 lg:h-[calc(100vh-2rem)]">
           <div className="mb-8">
             <Link href="/" className="inline-flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-glow">
-                <Clapperboard className="h-5 w-5" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-primary/90 to-accent/80 shadow-glow">
+                <Clapperboard className="h-5 w-5 text-white" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">ClipForge AI</p>
-                <p className="text-xs text-white/45">Upload Sekali. Sebar Viral ke Mana-mana.</p>
+                <p className="text-xs text-white/45">Workspace short-form yang lebih rapi.</p>
               </div>
             </Link>
+          </div>
+
+          <div className="mb-4 rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+            <p className="section-eyebrow">Cara Pakai</p>
+            <div className="mt-3 space-y-3 text-sm text-white/65">
+              <p>1. Upload video atau pakai mode demo.</p>
+              <p>2. Tinjau clip terbaik dan alasan skornya.</p>
+              <p>3. Edit lalu export paket siap unggah.</p>
+            </div>
+          </div>
+
+          <div className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.24em] text-white/35">
+            Navigasi
           </div>
 
           <nav className="space-y-2">
@@ -117,21 +130,29 @@ export function AppShell({
                   href={item.href}
                   onClick={(event) => handleNavigation(event, item.href)}
                   className={cn(
-                    "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-white/70 transition hover:bg-white/8 hover:text-white",
-                    active && "bg-white/10 text-white shadow-glow"
+                    "flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm text-white/68 transition hover:border-white/10 hover:bg-white/[0.06] hover:text-white",
+                    active && "border-white/10 bg-white/[0.08] text-white"
                   )}
                 >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
+                  <span
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]",
+                      active && "border-primary/30 bg-primary/12 text-blue-100"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1">{item.label}</span>
+                  {active ? <ArrowUpRight className="h-4 w-4 text-white/40" /> : null}
                 </Link>
               );
             })}
           </nav>
 
           <div className="mt-8 rounded-[24px] border border-cyan-300/10 bg-cyan-400/8 p-4">
-            <p className="text-sm font-semibold text-white">Offline-ready pipeline</p>
+            <p className="text-sm font-semibold text-white">Mode prototipe tetap jalan</p>
             <p className="mt-2 text-xs leading-5 text-white/60">
-              Fallback FFmpeg.wasm di sisi client dan route AI mock menjaga workflow tetap bisa dipakai sambil integrasi API asli disiapkan.
+              Fallback FFmpeg.wasm dan mock AI membuat alur inti bisa diuji dulu sebelum integrasi API produksi dipasang.
             </p>
           </div>
         </aside>
@@ -139,8 +160,8 @@ export function AppShell({
         <main className="min-w-0 space-y-6">
           <div className="glass-card flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
-              {eyebrow ? <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">{eyebrow}</p> : null}
-              <h1 className="mt-1 break-words text-3xl font-semibold text-white">{title}</h1>
+              {eyebrow ? <p className="section-eyebrow">{eyebrow}</p> : null}
+              <h1 className="mt-2 break-words text-3xl font-semibold text-white md:text-4xl">{title}</h1>
             </div>
             {actions ? <div className="flex flex-wrap items-center gap-3 md:justify-end">{actions}</div> : null}
           </div>

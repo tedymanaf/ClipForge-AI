@@ -23,9 +23,9 @@ export function AnalyticsDashboard({ project }: { project: Project }) {
       <Card className="space-y-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">Tampilan performa</p>
-            <p className="mt-2 font-medium text-white">Rincian Virality</p>
-            <p className="text-sm text-white/55">Bandingkan 8 dimensi penilaian yang membentuk performa short-form.</p>
+            <p className="section-eyebrow">Tampilan Performa</p>
+            <p className="mt-2 text-xl font-semibold text-white">Rincian skor clip teratas</p>
+            <p className="text-sm text-white/55">Radar chart ini membantu membaca kekuatan clip secara cepat tanpa membuka detail panjang.</p>
           </div>
           {topClip ? <Badge className="w-fit">{topClip.title}</Badge> : null}
         </div>
@@ -47,10 +47,10 @@ export function AnalyticsDashboard({ project }: { project: Project }) {
         <Card className="space-y-4">
           <div>
             <p className="font-medium text-white">Kenapa skornya tinggi</p>
-            <p className="text-sm text-white/55">Alasan utama dari clip terdepan supaya review tetap mudah ditindaklanjuti.</p>
+            <p className="text-sm text-white/55">Poin-poin ini dibuat supaya hasil analisis bisa langsung ditindaklanjuti saat review.</p>
           </div>
           {topClip?.whyItWorks.map((item) => (
-            <div key={item} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-white/70">
+            <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-white/70">
               {item}
             </div>
           ))}
@@ -59,7 +59,7 @@ export function AnalyticsDashboard({ project }: { project: Project }) {
         <Card className="space-y-4">
           <div>
             <p className="font-medium text-white">Rekomendasi</p>
-            <p className="text-sm text-white/55">Langkah berikut yang disarankan berdasarkan angle terkuatmu saat ini.</p>
+            <p className="text-sm text-white/55">Saran ini menjaga dashboard tetap berorientasi aksi, bukan cuma laporan.</p>
           </div>
           <div className="rounded-2xl border border-emerald-300/15 bg-emerald-300/10 p-4 text-sm leading-6 text-white/75">
             Angle dengan performa terbaik saat ini adalah urgensi edukatif. Buka dengan klaim tegas, lalu masuk ke takeaway praktis sebelum detik kelima.

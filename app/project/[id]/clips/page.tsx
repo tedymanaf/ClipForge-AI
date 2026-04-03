@@ -47,7 +47,7 @@ export default function ClipsPage() {
 
   if (!hydrated) {
     return (
-      <AppShell title="Loading project" eyebrow="Review & Approve">
+      <AppShell title="Memuat project" eyebrow="Review Clip">
         <Card>
           <p className="text-white/70">Restoring project data...</p>
         </Card>
@@ -57,7 +57,7 @@ export default function ClipsPage() {
 
   if (!project) {
     return (
-      <AppShell title="Recovering project" eyebrow="Review & Approve">
+      <AppShell title="Memulihkan project" eyebrow="Review Clip">
         <Card>
           <p className="text-white/70">Project lama tidak ditemukan. Mengarahkan ke project yang tersedia...</p>
         </Card>
@@ -67,7 +67,7 @@ export default function ClipsPage() {
 
   if (!isProjectReadyForReview(project)) {
     return (
-      <AppShell title="Preparing clips" eyebrow="Review & Approve">
+      <AppShell title="Menyiapkan clip" eyebrow="Review Clip">
         <Card>
           <p className="text-white/70">Project ini belum siap direview. Mengarahkan ke halaman processing...</p>
         </Card>
@@ -80,13 +80,13 @@ export default function ClipsPage() {
     .sort((a, b) => b.viralScore - a.viralScore);
 
   return (
-    <AppShell title={`${project.name} Clips`} eyebrow="Review & Approve">
+    <AppShell title={`Review Clip ${project.name}`} eyebrow="Review Clip">
       <Card className="grid gap-4 md:grid-cols-[1fr_auto]">
-        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search clips, hooks, or content type" />
+        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari judul clip atau hook" />
         <div className="flex flex-wrap gap-2">
-          <Badge>Sort: Viral Score</Badge>
-          <Badge>Filter: All platforms</Badge>
-          <Badge>{project.clips.length} clips</Badge>
+          <Badge>Urut: Viral Score</Badge>
+          <Badge>Filter: Semua platform</Badge>
+          <Badge>{project.clips.length} clip</Badge>
         </div>
       </Card>
 

@@ -10,7 +10,7 @@ export function CaptionOverlay({ cues }: { cues: CaptionCue[] }) {
       <div className="flex items-center justify-between">
         <div>
           <p className="font-medium text-white">Preview Caption</p>
-          <p className="text-sm text-white/55">Preview yang sinkron per kata dengan emoji dan penanda emphasis.</p>
+          <p className="text-sm text-white/55">Contoh hasil caption yang bisa diedit sebelum ikut masuk ke paket export.</p>
         </div>
         <Badge>Akurasi target 97%</Badge>
       </div>

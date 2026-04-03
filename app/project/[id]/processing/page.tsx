@@ -134,7 +134,7 @@ export default function ProcessingPage() {
 
   if (!hydrated) {
     return (
-      <AppShell title="Loading project" eyebrow="Pipeline Status">
+      <AppShell title="Memuat project" eyebrow="Status Pipeline">
         <Card>
           <p className="text-white/70">Restoring project data...</p>
         </Card>
@@ -144,7 +144,7 @@ export default function ProcessingPage() {
 
   if (!project) {
     return (
-      <AppShell title="Recovering project" eyebrow="Pipeline Status">
+      <AppShell title="Memulihkan project" eyebrow="Status Pipeline">
         <Card>
           <p className="text-white/70">Project lama tidak ditemukan. Mengarahkan ke project yang tersedia...</p>
         </Card>
@@ -154,13 +154,13 @@ export default function ProcessingPage() {
 
   return (
     <AppShell
-      title={`Processing ${project.name}`}
-      eyebrow="Pipeline Status"
+      title={`Memproses ${project.name}`}
+      eyebrow="Status Pipeline"
       actions={
         project.status === "ready" ? (
           <Link href={`/project/${project.id}/clips`}>
             <Button className="gap-2">
-              Review Clips
+              Review Clip
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
@@ -183,9 +183,9 @@ export default function ProcessingPage() {
             style={heroThumbnail ? { backgroundImage: `url("${heroThumbnail}")` } : undefined}
           />
           <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <p className="text-sm text-white/55">Estimated time remaining</p>
+            <p className="text-sm text-white/55">Perkiraan sisa waktu</p>
             <p className="mt-2 text-3xl font-semibold text-white">
-              {project.status === "ready" ? "Done" : project.status === "error" ? "Retry" : `${Math.max(1, Math.ceil((100 - project.progress) / 12))} min`}
+              {project.status === "ready" ? "Selesai" : project.status === "error" ? "Perlu dicek" : `${Math.max(1, Math.ceil((100 - project.progress) / 12))} min`}
             </p>
           </div>
         </Card>
@@ -196,8 +196,8 @@ export default function ProcessingPage() {
       {liveClips.length ? (
         <section className="space-y-4">
           <div>
-            <p className="font-medium text-white">Clips arriving live</p>
-            <p className="text-sm text-white/55">Top candidates appear as soon as they are ready.</p>
+            <p className="font-medium text-white">Clip yang mulai tersedia</p>
+            <p className="text-sm text-white/55">Kandidat terbaik akan muncul segera begitu siap direview.</p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
             {liveClips.slice(0, 3).map((clip) => (

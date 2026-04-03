@@ -37,11 +37,11 @@ export function ClipEditor({
         />
         <div className="grid grid-cols-2 gap-3 text-sm text-white/65">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <p className="text-white">Duration</p>
+            <p className="text-white">Durasi</p>
             <p className="mt-1 text-2xl font-semibold">{formatDuration(clip.durationSec)}</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <p className="text-white">Platforms</p>
+            <p className="text-white">Platform</p>
             <p className="mt-1 text-2xl font-semibold">{clip.platforms.length}</p>
           </div>
         </div>
@@ -52,7 +52,7 @@ export function ClipEditor({
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-white">Timeline</p>
-              <p className="text-sm text-white/55">Non-destructive trim, transcript-aligned editing, and waveform overview.</p>
+              <p className="text-sm text-white/55">Area ini difokuskan untuk trim, membaca ritme, dan mengedit tanpa merusak source asli.</p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => undoProjectEdit(project.id)} disabled={!canUndo}>
@@ -84,11 +84,11 @@ export function ClipEditor({
 
           <div className="grid gap-3 md:grid-cols-2">
             {[
-              { icon: ScissorsLineDashed, label: "Trim handles", desc: "Drag precise in/out points." },
-              { icon: Subtitles, label: "Caption editor", desc: "Edit text, timing, and style." },
-              { icon: Music4, label: "Music track", desc: "Layer royalty-free background audio." },
-              { icon: SlidersHorizontal, label: "Filters", desc: "Brightness, saturation, vignette." },
-              { icon: Waves, label: "Volume mixer", desc: "Control voice and music independently." }
+              { icon: ScissorsLineDashed, label: "Trim handles", desc: "Atur titik masuk dan keluar dengan presisi." },
+              { icon: Subtitles, label: "Caption editor", desc: "Ubah teks, timing, dan gaya caption." },
+              { icon: Music4, label: "Music track", desc: "Tambahkan musik latar untuk versi akhir." },
+              { icon: SlidersHorizontal, label: "Filters", desc: "Atur brightness, saturation, dan nuansa visual." },
+              { icon: Waves, label: "Volume mixer", desc: "Kontrol level suara voice dan musik." }
             ].map((item) => {
               const Icon = item.icon;
               return (
@@ -118,8 +118,8 @@ export function ClipEditor({
 
       <Card className="space-y-4">
         <div>
-          <p className="font-medium text-white">Metadata Panel</p>
-          <p className="text-sm text-white/55">Titles, descriptions, hashtags, and hook rewrite suggestions.</p>
+          <p className="font-medium text-white">Panel Metadata</p>
+          <p className="text-sm text-white/55">Judul, deskripsi, hashtag, dan saran hook ditampilkan lebih ringkas.</p>
         </div>
         <div className="space-y-3">
           {(project.metadata[clip.id]?.titles.tiktok ?? []).map((title) => (

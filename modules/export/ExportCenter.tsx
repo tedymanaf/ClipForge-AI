@@ -101,8 +101,9 @@ export function ExportCenter({
     <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
       <Card className="space-y-4">
         <div>
-          <p className="font-medium text-white">Export Controls</p>
-          <p className="text-sm text-white/55">Pick platforms, quality, captions, and delivery mode.</p>
+          <p className="section-eyebrow">Export</p>
+          <p className="mt-3 text-2xl font-semibold text-white">Tentukan paket akhir yang ingin kamu kirim.</p>
+          <p className="mt-2 text-sm text-white/55">Halaman export diringkas supaya fokus ke apa yang akan dikirim, bukan detail teknis yang berlebihan.</p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
@@ -122,13 +123,13 @@ export function ExportCenter({
 
         <div className="grid gap-3">
           {[
-            "Quality: Standard 1080p",
-            "Formats: MP4 H.264",
-            "Captions: Burned-in MP4 + SRT + VTT",
-            "Thumbnail: JPG platform covers included",
-            "Delivery: Download ZIP or publish direct"
+            "Kualitas default: Standard 1080p",
+            "Format video: MP4 H.264",
+            "Caption: burn-in MP4 + file SRT + VTT",
+            "Thumbnail: JPG per platform ikut disiapkan",
+            "Distribusi: unduh ZIP atau kirim ke antrean publish"
           ].map((item) => (
-            <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+            <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70">
               {item}
             </div>
           ))}
@@ -166,8 +167,8 @@ export function ExportCenter({
               <PackageCheck className="h-4 w-4 text-emerald-200" />
             </div>
             <div>
-              <p className="font-medium text-white">Distribution-ready bundle</p>
-              <p className="text-sm text-white/55">ZIP sekarang berisi MP4 dengan caption nempel, plus JPG, metadata JSON, dan subtitle editable.</p>
+              <p className="font-medium text-white">Bundle siap distribusi</p>
+              <p className="text-sm text-white/55">ZIP berisi video, thumbnail, metadata, dan subtitle yang siap dibawa ke tahap publikasi.</p>
             </div>
           </div>
           <div className="grid gap-4 lg:grid-cols-[220px_1fr]">

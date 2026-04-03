@@ -70,7 +70,7 @@ export default function ExportPage() {
 
   if (!hydrated) {
     return (
-      <AppShell title="Loading export" eyebrow="Distribution Center">
+      <AppShell title="Memuat export" eyebrow="Pusat Distribusi">
         <Card>
           <p className="text-white/70">Preparing export data...</p>
         </Card>
@@ -80,7 +80,7 @@ export default function ExportPage() {
 
   if (!project || !clip) {
     return (
-      <AppShell title="Recovering export" eyebrow="Distribution Center">
+      <AppShell title="Memulihkan export" eyebrow="Pusat Distribusi">
         <Card>
           <p className="text-white/70">Target export tidak ditemukan. Mengarahkan ke clip yang tersedia...</p>
         </Card>
@@ -90,7 +90,7 @@ export default function ExportPage() {
 
   if (!isProjectReadyForReview(project)) {
     return (
-      <AppShell title="Preparing export" eyebrow="Distribution Center">
+      <AppShell title="Menyiapkan export" eyebrow="Pusat Distribusi">
         <Card>
           <p className="text-white/70">Project ini belum siap diexport. Mengarahkan ke halaman processing...</p>
         </Card>
@@ -99,7 +99,7 @@ export default function ExportPage() {
   }
 
   return (
-    <AppShell title={`Export ${project.name}`} eyebrow="Distribution Center">
+    <AppShell title={`Export ${project.name}`} eyebrow="Pusat Distribusi">
       <ExportCenter
         clip={clip}
         metadata={project.metadata[clip.id]}

@@ -279,18 +279,33 @@ export function ClipCard({
         </div>
 
         <div className="flex flex-1 flex-col space-y-4 p-5">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {clip.platforms.map((platform) => (
               <Badge key={platform} className="capitalize">{platform}</Badge>
             ))}
+            <span className="text-xs text-white/40">{clip.contentType}</span>
           </div>
 
-          <div className="space-y-2">
-            {clip.whyItWorks.slice(0, 2).map((item) => (
-              <p key={item} className="text-sm leading-6 text-white/65" style={lineClampTwo}>
-                {item}
-              </p>
-            ))}
+          <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-white/38">Kenapa clip ini menarik</p>
+            <div className="mt-3 space-y-2">
+              {clip.whyItWorks.slice(0, 2).map((item) => (
+                <p key={item} className="text-sm leading-6 text-white/65" style={lineClampTwo}>
+                  {item}
+                </p>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+              <p className="text-white/40">Mulai</p>
+              <p className="mt-1 font-semibold text-white">{clip.startSec.toFixed(1)}s</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+              <p className="text-white/40">Durasi</p>
+              <p className="mt-1 font-semibold text-white">{formatDuration(clip.durationSec)}</p>
+            </div>
           </div>
 
           <div className="mt-auto space-y-3">
@@ -309,7 +324,7 @@ export function ClipCard({
             <div className="grid grid-cols-2 gap-2">
               <Button variant="secondary" className="w-full justify-center gap-2" onClick={handlePlayPreview}>
                 <Play className="h-4 w-4" />
-                Play
+                Preview
               </Button>
               <Link href={`/project/${projectId}/clip/${clip.id}`} className="flex-1">
                 <Button className="w-full justify-center gap-2">
@@ -328,7 +343,7 @@ export function ClipCard({
                 disabled={downloadState === "working"}
               >
                 {downloadState === "working" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                {downloadState === "working" ? "Proses" : "Download"}
+                {downloadState === "working" ? "Proses" : "Unduh"}
               </Button>
               <Link href={`/project/${projectId}/export?clipId=${clip.id}`}>
                 <Button variant="outline" size="sm" className="w-full justify-center gap-2" aria-label="Buka halaman export clip">

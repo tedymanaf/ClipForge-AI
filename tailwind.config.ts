@@ -19,11 +19,11 @@ const config: Config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#7C3AED",
+          DEFAULT: "#2563EB",
           foreground: "#F8F8FF"
         },
         accent: {
-          DEFAULT: "#06B6D4",
+          DEFAULT: "#14B8A6",
           foreground: "#F8F8FF"
         },
         success: {
@@ -47,14 +47,14 @@ const config: Config = {
         sm: "0.75rem"
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(124,58,237,0.25), 0 0 30px rgba(124,58,237,0.18)",
-        cyan: "0 0 0 1px rgba(6,182,212,0.22), 0 0 26px rgba(6,182,212,0.16)"
+        glow: "0 18px 50px rgba(37,99,235,0.18)",
+        cyan: "0 18px 44px rgba(20,184,166,0.14)"
       },
       backgroundImage: {
         "hero-grid":
-          "radial-gradient(circle at top, rgba(124,58,237,0.28), transparent 30%), radial-gradient(circle at 80% 20%, rgba(6,182,212,0.20), transparent 25%), linear-gradient(135deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+          "radial-gradient(circle at top, rgba(37,99,235,0.2), transparent 32%), radial-gradient(circle at 80% 20%, rgba(20,184,166,0.16), transparent 26%), linear-gradient(135deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
         "surface-glass":
-          "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))"
+          "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))"
       },
       backgroundSize: {
         grid: "24px 24px"
@@ -71,8 +71,8 @@ const config: Config = {
           "50%": { transform: "translateY(-12px)" }
         },
         pulseGlow: {
-          "0%, 100%": { boxShadow: "0 0 0 1px rgba(124,58,237,0.22), 0 0 24px rgba(124,58,237,0.12)" },
-          "50%": { boxShadow: "0 0 0 1px rgba(6,182,212,0.28), 0 0 36px rgba(6,182,212,0.16)" }
+          "0%, 100%": { boxShadow: "0 0 0 1px rgba(37,99,235,0.2), 0 0 22px rgba(37,99,235,0.12)" },
+          "50%": { boxShadow: "0 0 0 1px rgba(20,184,166,0.24), 0 0 32px rgba(20,184,166,0.14)" }
         },
         marquee: {
           "0%": { transform: "translateX(0%)" },

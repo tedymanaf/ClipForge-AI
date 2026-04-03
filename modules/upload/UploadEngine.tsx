@@ -276,9 +276,25 @@ export function UploadEngine() {
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
       <Card className="relative overflow-hidden p-0">
-        <div className="pointer-events-none hero-orb left-[-120px] top-[-80px] h-72 w-72 bg-primary/25" />
-        <div className="pointer-events-none hero-orb bottom-[-120px] right-[-80px] h-72 w-72 bg-cyan-400/20" />
+        <div className="pointer-events-none hero-orb left-[-120px] top-[-80px] h-72 w-72 bg-primary/20" />
+        <div className="pointer-events-none hero-orb bottom-[-120px] right-[-80px] h-72 w-72 bg-cyan-400/15" />
         <div className="relative p-6 md:p-8">
+          <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="section-eyebrow">Input Source</p>
+              <h3 className="mt-3 text-3xl font-semibold text-white">Masukkan video, lalu biarkan ClipForge menyusun draft awal.</h3>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60">
+                Area ini disederhanakan supaya pengguna baru langsung paham: pilih sumber, tunggu project dibuat,
+                lalu masuk ke tahap review.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs text-white/50">
+              <Badge>Max 4GB</Badge>
+              <Badge>Hingga 5 video</Badge>
+              <Badge>Preview otomatis</Badge>
+            </div>
+          </div>
+
           <div
             role="button"
             tabIndex={0}
@@ -296,19 +312,20 @@ export function UploadEngine() {
             className={`group relative rounded-[32px] border-2 border-dashed p-10 text-center transition-all ${
               dragging
                 ? "border-primary bg-primary/10 shadow-glow"
-                : "border-white/15 bg-black/20 hover:border-cyan-300/40 hover:bg-white/5"
+                : "border-white/15 bg-black/20 hover:border-cyan-300/30 hover:bg-white/[0.04]"
             }`}
           >
             <motion.div
               animate={{ y: [0, -10, 0], scale: [1, 1.04, 1] }}
               transition={{ duration: 2.4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-              className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[28px] bg-gradient-to-br from-primary/80 to-accent/80 shadow-glow"
+              className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[28px] border border-white/10 bg-gradient-to-br from-primary/85 to-accent/75 shadow-glow"
             >
               <UploadCloud className="h-9 w-9 text-white" />
             </motion.div>
-            <h3 className="text-2xl font-semibold text-white">Letakkan video panjang di sini</h3>
+            <h3 className="text-2xl font-semibold text-white">Taruh video panjang di sini</h3>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-white/60">
-              MP4, MOV, AVI, MKV, WebM hingga 4GB. Batch sampai 5 video sekaligus, thumbnail preview otomatis, plus metadata dasar seperti durasi, resolusi, dan codec.
+              Format MP4, MOV, AVI, MKV, atau WebM. Setelah file masuk, ClipForge akan membuat thumbnail, membaca
+              metadata dasar, lalu menyiapkan project baru secara otomatis.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Button type="button" className="gap-2">
@@ -339,16 +356,16 @@ export function UploadEngine() {
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-[1fr_auto]">
-            <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
+            <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4">
               <div className="mb-3 flex items-center gap-2">
                 <Youtube className="h-4 w-4 text-red-300" />
                 <Link2 className="h-4 w-4 text-cyan-300" />
-                <p className="text-sm font-medium text-white">Import dari YouTube atau Google Drive</p>
+                <p className="text-sm font-medium text-white">Atau impor dari YouTube / Google Drive</p>
               </div>
               <Input
                 value={urlValue}
                 onChange={(event) => setUrlValue(event.target.value)}
-                placeholder="Paste YouTube / Google Drive link"
+                placeholder="Tempel link video di sini"
               />
             </div>
             <Button className="h-auto min-h-[56px] px-6" onClick={handleImportUrl} disabled={working}>
@@ -363,11 +380,16 @@ export function UploadEngine() {
           ) : null}
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {recentProjects.length === 0 ? (
+              <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-5 text-sm text-white/55 md:col-span-3">
+                Project terbaru akan muncul di sini setelah upload pertama selesai.
+              </div>
+            ) : null}
             {recentProjects.map((project) => (
               <Link
                 key={project.id}
                 href={getProjectPrimaryRoute(project)}
-                className="rounded-[24px] border border-white/10 bg-black/20 p-4 transition hover:border-cyan-300/25 hover:bg-black/30"
+                className="rounded-[24px] border border-white/10 bg-black/20 p-4 transition hover:border-cyan-300/20 hover:bg-black/30"
               >
                 <div
                   className="aspect-video rounded-2xl border border-white/10 bg-cover bg-center"
@@ -387,8 +409,9 @@ export function UploadEngine() {
 
       <Card className="space-y-5">
         <div>
-          <p className="font-medium text-white">Antrean Upload</p>
-          <p className="text-sm text-white/55">Progress realtime dengan penyimpanan lokal dan status antrean yang jelas.</p>
+          <p className="section-eyebrow">Status</p>
+          <p className="mt-3 text-2xl font-semibold text-white">Antrean upload dan panduan singkat.</p>
+          <p className="mt-2 text-sm text-white/55">Sisi kanan dibuat untuk menjawab dua hal: status proses sekarang dan apa yang akan terjadi sesudahnya.</p>
         </div>
 
         {queue.length === 0 ? (
@@ -410,12 +433,24 @@ export function UploadEngine() {
           ))
         )}
 
+        <div className="grid gap-3">
+          {[
+            "Setelah upload, project langsung dibuat dan dibawa ke halaman processing.",
+            "Saat processing berjalan, clip kandidat bisa mulai muncul sebelum seluruh pipeline selesai.",
+            "Saat review selesai, export bundle akan berisi video, caption, thumbnail, dan metadata."
+          ].map((item) => (
+            <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-6 text-white/68">
+              {item}
+            </div>
+          ))}
+        </div>
+
         <div className="rounded-[28px] border border-cyan-300/15 bg-cyan-300/8 p-5">
-          <p className="font-medium text-white">Target pemrosesan</p>
+          <p className="font-medium text-white">Ekspektasi pengalaman</p>
           <div className="mt-3 space-y-2 text-sm text-white/65">
-            <p>Pemrosesan dimulai kurang dari 3 detik setelah upload.</p>
-            <p>Clip pertama muncul kurang dari 2 menit untuk sumber 10 menit.</p>
-            <p>Transkripsi dan metadata Bahasa Indonesia aktif secara default.</p>
+            <p>Pengguna harus tahu file sudah diterima hanya dalam sekali lihat.</p>
+            <p>Project baru harus terasa langsung "hidup" setelah upload selesai.</p>
+            <p>Transkripsi dan metadata Bahasa Indonesia tetap jadi default.</p>
           </div>
         </div>
       </Card>

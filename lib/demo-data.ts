@@ -46,8 +46,8 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
   brandName: "ClipForge AI",
-  brandColors: ["#7C3AED", "#06B6D4", "#10B981"],
-  fontFamily: "Inter",
+  brandColors: ["#2563EB", "#14B8A6", "#10B981"],
+  fontFamily: "Space Grotesk",
   notifications: true,
   demoMode: true
 };
