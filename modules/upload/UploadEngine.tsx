@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Film, Link2, LoaderCircle, UploadCloud, Youtube } from "lucide-react";
+import { CheckCircle2, Film, Link2, LoaderCircle, UploadCloud, XCircle, Youtube } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -26,6 +26,16 @@ const SIMPLE_FLOW = [
   { id: "download", label: "Download MP4", description: "Ambil hasil akhir dalam format MP4." }
 ] as const;
 type UploadFlowStage = "idle" | "uploading" | "analyzing" | "ready" | "error";
+
+function createAbortError() {
+  return new DOMException("Upload dibatalkan oleh pengguna.", "AbortError");
+}
+
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw createAbortError();
+  }
+}
 
 function createFallbackThumbnail(label: string) {
   return svgToDataUri(`
@@ -143,6 +153,8 @@ async function extractVideoMetadata(file: File): Promise<UploadDescriptor> {
 export function UploadEngine() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeAbortRef = useRef<AbortController | null>(null);
+  const activeQueueIdRef = useRef<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [urlValue, setUrlValue] = useState("");
@@ -173,14 +185,43 @@ export function UploadEngine() {
             ? 100
             : 0;
 
-  async function bestEffortPersistUpload(descriptor: UploadDescriptor) {
+  function resetUploadStatus(options?: { message?: string; tone?: UploadFlowStage; clearName?: boolean }) {
+    setWorking(false);
+    setFlowStage(options?.tone ?? "idle");
+    setFlowMessage(options?.message ?? "Pilih satu video, lalu aplikasi akan langsung membawamu ke halaman review clip.");
+    if (options?.clearName ?? true) {
+      setActiveUploadName(null);
+    }
+    activeAbortRef.current = null;
+    activeQueueIdRef.current = null;
+  }
+
+  function cancelActiveUpload() {
+    const activeQueueId = activeQueueIdRef.current;
+    if (activeAbortRef.current) {
+      activeAbortRef.current.abort();
+    }
+
+    if (activeQueueId) {
+      removeQueueItem(activeQueueId);
+    }
+
+    resetUploadStatus({
+      tone: "idle",
+      message: "Upload dibatalkan. Kamu bisa pilih video lain kapan saja."
+    });
+    setError(null);
+  }
+
+  async function bestEffortPersistUpload(descriptor: UploadDescriptor, signal?: AbortSignal) {
     if (!descriptor.file) {
       return descriptor;
     }
 
     const formData = new FormData();
     formData.append("file", descriptor.file);
-    const response = await fetch("/api/upload", { method: "POST", body: formData });
+    const response = await fetch("/api/upload", { method: "POST", body: formData, signal });
+    throwIfAborted(signal);
 
     if (!response.ok) {
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
@@ -197,7 +238,7 @@ export function UploadEngine() {
     };
   }
 
-  async function processDescriptor(descriptor: UploadDescriptor) {
+  async function processDescriptor(descriptor: UploadDescriptor, signal?: AbortSignal) {
     const queueItem: QueueItem = {
       id: descriptor.id,
       name: descriptor.name,
@@ -207,13 +248,16 @@ export function UploadEngine() {
     };
 
     addQueueItem(queueItem);
+    activeQueueIdRef.current = descriptor.id;
     try {
       for (const progress of [15, 34, 58, 76, 92]) {
+        throwIfAborted(signal);
         updateQueueItem(descriptor.id, { progress });
         await new Promise((resolve) => setTimeout(resolve, 140));
       }
 
-      const persistedDescriptor = await bestEffortPersistUpload(descriptor);
+      const persistedDescriptor = await bestEffortPersistUpload(descriptor, signal);
+      throwIfAborted(signal);
       const project = createProjectFromUpload(persistedDescriptor);
       updateProject(project.id, (item) => ({
         ...item,
@@ -226,6 +270,7 @@ export function UploadEngine() {
       setFlowStage("analyzing");
       setFlowMessage("Upload selesai. AI sedang memilih clip terbaik, menyiapkan subtitle, dan metadata dasar.");
       await sleep(220);
+      throwIfAborted(signal);
       const sourceProject = useClipForgeStore.getState().projects.find((item) => item.id === project.id) ?? {
         ...project,
         status: "processing" as const,
@@ -234,14 +279,23 @@ export function UploadEngine() {
       };
 
       const analyzed = await analyzeProject(sourceProject);
+      throwIfAborted(signal);
       updateProject(project.id, () => analyzed);
 
       updateQueueItem(descriptor.id, { progress: 100, status: "queued" });
       setTimeout(() => removeQueueItem(descriptor.id), 1000);
+      activeQueueIdRef.current = null;
       return analyzed;
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        removeQueueItem(descriptor.id);
+        activeQueueIdRef.current = null;
+        throw error;
+      }
+
       updateQueueItem(descriptor.id, { status: "error" });
       setTimeout(() => removeQueueItem(descriptor.id), 1800);
+      activeQueueIdRef.current = null;
       throw error;
     }
   }
@@ -267,6 +321,8 @@ export function UploadEngine() {
     }
 
     setWorking(true);
+    const controller = new AbortController();
+    activeAbortRef.current = controller;
 
     try {
       const descriptors = await Promise.all(selected.map((file) => extractVideoMetadata(file)));
@@ -275,7 +331,7 @@ export function UploadEngine() {
         setActiveUploadName(descriptor.name);
         setFlowStage("uploading");
         setFlowMessage("Video sedang diunggah dan project sedang dibuat.");
-        const project = await processDescriptor(descriptor);
+        const project = await processDescriptor(descriptor, controller.signal);
         createdProjects.push(project);
       }
 
@@ -283,9 +339,14 @@ export function UploadEngine() {
       if (firstProject) {
         setFlowStage("ready");
         setFlowMessage("Selesai. Clip terbaik sudah siap direview.");
+        activeAbortRef.current = null;
         router.push(`/project/${firstProject.id}/clips`);
       }
     } catch (uploadError) {
+      if (uploadError instanceof DOMException && uploadError.name === "AbortError") {
+        return;
+      }
+
       setFlowStage("error");
       setFlowMessage("Upload atau analisis gagal. Coba reset workspace lalu upload ulang satu video.");
       setError(
@@ -294,7 +355,10 @@ export function UploadEngine() {
           : "Upload video ke server gagal. Project belum dibuat supaya tidak berakhir di preview logo saja."
       );
     } finally {
-      setWorking(false);
+      if (!controller.signal.aborted) {
+        setWorking(false);
+        activeAbortRef.current = null;
+      }
     }
   }
 
@@ -319,20 +383,30 @@ export function UploadEngine() {
     };
 
     setWorking(true);
+    const controller = new AbortController();
+    activeAbortRef.current = controller;
     try {
       setActiveUploadName(descriptor.name);
       setFlowStage("uploading");
       setFlowMessage("Link diterima. Project sedang dibuat dari sumber URL.");
-      const project = await processDescriptor(descriptor);
+      const project = await processDescriptor(descriptor, controller.signal);
       setFlowStage("ready");
       setFlowMessage("Selesai. Clip terbaik sudah siap direview.");
+      activeAbortRef.current = null;
       router.push(`/project/${project.id}/clips`);
     } catch (uploadError) {
+      if (uploadError instanceof DOMException && uploadError.name === "AbortError") {
+        return;
+      }
+
       setFlowStage("error");
       setFlowMessage("Import URL gagal. Coba cek link atau pakai upload file langsung.");
       setError(uploadError instanceof Error ? uploadError.message : "Import URL gagal.");
     } finally {
-      setWorking(false);
+      if (!controller.signal.aborted) {
+        setWorking(false);
+        activeAbortRef.current = null;
+      }
     }
   }
 
@@ -489,17 +563,25 @@ export function UploadEngine() {
               <p className="font-medium text-white">{activeUploadName ?? "Belum ada video aktif"}</p>
               <p className="mt-2 text-sm leading-6 text-white/60">{flowMessage}</p>
             </div>
-            <Badge>
-              {flowStage === "idle"
-                ? "siap"
-                : flowStage === "uploading"
-                  ? "upload"
-                  : flowStage === "analyzing"
-                    ? "reviewing"
-                    : flowStage === "ready"
-                      ? "siap review"
-                      : "error"}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge>
+                {flowStage === "idle"
+                  ? "siap"
+                  : flowStage === "uploading"
+                    ? "upload"
+                    : flowStage === "analyzing"
+                      ? "reviewing"
+                      : flowStage === "ready"
+                        ? "siap review"
+                        : "error"}
+              </Badge>
+              {working ? (
+                <Button type="button" variant="outline" size="sm" className="gap-2" onClick={cancelActiveUpload}>
+                  <XCircle className="h-4 w-4" />
+                  Batal Upload
+                </Button>
+              ) : null}
+            </div>
           </div>
           <Progress className="mt-4" value={flowProgress} />
         </div>
