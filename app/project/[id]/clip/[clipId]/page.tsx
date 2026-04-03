@@ -57,7 +57,7 @@ export default function ClipDetailPage() {
     return (
       <AppShell title="Memuat clip" eyebrow="Editor Manual">
         <Card>
-          <p className="text-white/70">Restoring clip data...</p>
+          <p className="text-white/70">Data clip sedang dipulihkan. Tunggu sebentar...</p>
         </Card>
       </AppShell>
     );
@@ -77,7 +77,7 @@ export default function ClipDetailPage() {
     return (
       <AppShell title="Menyiapkan clip" eyebrow="Editor Manual">
         <Card>
-          <p className="text-white/70">Project ini belum siap diedit. Mengarahkan ke halaman processing...</p>
+          <p className="text-white/70">Project ini belum siap diedit. Kamu sedang diarahkan ke status proses terbaru...</p>
         </Card>
       </AppShell>
     );

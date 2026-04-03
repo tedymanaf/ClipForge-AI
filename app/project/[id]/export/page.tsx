@@ -60,9 +60,9 @@ export default function ExportPage() {
 
   if (!hydrated || !projectId) {
     return (
-      <AppShell title="Memuat export" eyebrow="Pusat Distribusi">
+      <AppShell title="Menyiapkan download" eyebrow="Download">
         <Card>
-          <p className="text-white/70">Preparing export data...</p>
+          <p className="text-white/70">Data export sedang disiapkan. Tunggu sebentar...</p>
         </Card>
       </AppShell>
     );
@@ -70,9 +70,9 @@ export default function ExportPage() {
 
   if (!project || !clip) {
     return (
-      <AppShell title="Memulihkan export" eyebrow="Pusat Distribusi">
+      <AppShell title="Menemukan clip export" eyebrow="Download">
         <Card>
-          <p className="text-white/70">Target export tidak ditemukan. Mengarahkan ke clip yang tersedia...</p>
+          <p className="text-white/70">Clip target tidak ditemukan. Kamu sedang diarahkan ke clip yang masih tersedia...</p>
         </Card>
       </AppShell>
     );
@@ -80,9 +80,9 @@ export default function ExportPage() {
 
   if (!isProjectReadyForReview(project)) {
     return (
-      <AppShell title="Menyiapkan export" eyebrow="Pusat Distribusi">
+      <AppShell title="Menunggu clip siap" eyebrow="Download">
         <Card>
-          <p className="text-white/70">Project ini belum siap diexport. Mengarahkan ke halaman processing...</p>
+          <p className="text-white/70">Project ini belum siap diunduh. Kamu sedang diarahkan ke status proses terbaru...</p>
         </Card>
       </AppShell>
     );

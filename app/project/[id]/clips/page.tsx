@@ -46,9 +46,9 @@ export default function ClipsPage() {
 
   if (!hydrated || !projectId) {
     return (
-      <AppShell title="Memuat project" eyebrow="Review Clip">
+      <AppShell title="Menyiapkan review" eyebrow="Review Clip">
         <Card>
-          <p className="text-white/70">Restoring project data...</p>
+          <p className="text-white/70">Data project sedang dipulihkan. Tunggu sebentar...</p>
         </Card>
       </AppShell>
     );
@@ -68,7 +68,7 @@ export default function ClipsPage() {
     return (
       <AppShell title="Menyiapkan clip" eyebrow="Review Clip">
         <Card>
-          <p className="text-white/70">Project ini belum siap direview. Mengarahkan ke halaman processing...</p>
+          <p className="text-white/70">Project ini belum siap direview. Kamu sedang diarahkan ke status proses terbaru...</p>
         </Card>
       </AppShell>
     );
@@ -141,11 +141,25 @@ export default function ClipsPage() {
         </div>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
-        {clips.map((clip) => (
-          <ClipCard key={clip.id} clip={clip} project={project} />
-        ))}
-      </div>
+      {clips.length ? (
+        <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
+          {clips.map((clip) => (
+            <ClipCard key={clip.id} clip={clip} project={project} />
+          ))}
+        </div>
+      ) : (
+        <Card className="space-y-4">
+          <div>
+            <p className="font-medium text-white">Belum ada clip yang cocok dengan pencarian ini</p>
+            <p className="mt-2 text-sm leading-6 text-white/60">
+              Coba ganti kata kunci, atau buka semua kandidat clip supaya kamu bisa lanjut ke edit dan download.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => setQuery("")} className="w-fit">
+            Tampilkan semua clip
+          </Button>
+        </Card>
+      )}
     </AppShell>
   );
 }

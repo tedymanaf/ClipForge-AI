@@ -88,6 +88,14 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function sortProjectsByRecent(projects: Project[]) {
+  return [...projects].sort((left, right) => {
+    const rightTime = Date.parse(right.updatedAt || right.createdAt || "");
+    const leftTime = Date.parse(left.updatedAt || left.createdAt || "");
+    return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+  });
+}
+
 function createFallbackThumbnail(label: string) {
   return svgToDataUri(`
     <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
@@ -124,7 +132,7 @@ function normalizeTranscriptSegment(value: unknown, index: number): TranscriptSe
   const raw = asRecord(value);
   const startMs = asNumber(raw.startMs, index * 4000);
   const endMs = Math.max(startMs + 1200, asNumber(raw.endMs, startMs + 3200));
-  const text = asString(raw.text, `Recovered transcript segment ${index + 1}`);
+  const text = asString(raw.text, `Segmen transkrip ${index + 1}`);
   const wordsSource = Array.isArray(raw.words) ? raw.words : text.split(" ").map((word) => ({ word }));
 
   return {
@@ -201,16 +209,16 @@ function normalizeClip(
     id: asString(raw.id, createId("clip")),
     projectId,
     title: asString(raw.title, `${projectName} Clip ${index + 1}`),
-    description: asString(raw.description, "Recovered clip candidate."),
+    description: asString(raw.description, "Kandidat clip dipulihkan dari data yang masih tersedia."),
     startSec,
     endSec,
     durationSec: Math.max(1, asNumber(raw.durationSec, endSec - startSec)),
     viralScore: clamp(asNumber(raw.viralScore, Math.round((breakdown.hook + breakdown.value + breakdown.platformFit) / 3)), 0, 100),
     breakdown,
     whyItWorks: Array.isArray(raw.whyItWorks) && raw.whyItWorks.length
-      ? raw.whyItWorks.map((item, reasonIndex) => asString(item, `Recovered reason ${reasonIndex + 1}`))
-      : ["Recovered clip candidate with enough data to keep editing safely."],
-    hookLine: asString(raw.hookLine, transcript[0]?.text ?? "Recovered hook line"),
+      ? raw.whyItWorks.map((item, reasonIndex) => asString(item, `Alasan ${reasonIndex + 1}`))
+      : ["Kandidat clip ini masih cukup aman untuk dilanjutkan ke tahap review dan edit."],
+    hookLine: asString(raw.hookLine, transcript[0]?.text ?? "Hook line dipulihkan"),
     transcript,
     platforms: normalizePlatforms(raw.platforms),
     contentType:
@@ -261,7 +269,7 @@ function normalizeThumbnailVariant(value: unknown, index: number, fallbackImage:
           : index === 1
             ? "action-frame"
             : "text-forward",
-    label: asString(raw.label, `Recovered thumbnail ${index + 1}`),
+    label: asString(raw.label, `Thumbnail ${index + 1}`),
     image: preferredImage ?? asString(raw.image, fallbackImage),
     size: raw.size === "1280x720" || raw.size === "1080x1080" || raw.size === "1080x1920" ? raw.size : "1080x1920"
   };
@@ -325,7 +333,7 @@ function normalizeProcessingStep(value: unknown, index: number): ProcessingStep 
 function normalizeProject(value: unknown): Project {
   const raw = asRecord(value);
   const projectId = asString(raw.id, createId("project"));
-  const rawProjectName = asString(raw.name, "Recovered Project");
+  const rawProjectName = asString(raw.name, "Project Dipulihkan");
   const createdAt = asString(raw.createdAt, new Date().toISOString());
   const updatedAt = asString(raw.updatedAt, createdAt);
   const rawAsset = asRecord(raw.asset);
@@ -417,8 +425,8 @@ function normalizeProject(value: unknown): Project {
     insight: asString(
       raw.insight,
       status === "ready"
-        ? "Recovered project is ready to review."
-        : "ClipForge is warming up the analysis engine."
+        ? "Project ini sudah siap direview."
+        : "Project sedang disiapkan untuk proses review."
     ),
     settings: {
       ...DEFAULT_PROJECT_SETTINGS,
@@ -434,7 +442,7 @@ function generatedClipToCandidate(project: Project, generatedClip: GeneratedClip
   return {
     id: generatedClip.id,
     projectId: project.id,
-    title: `Clip ${index + 1} · Score ${score}`,
+    title: `Clip ${index + 1} - Score ${score}`,
     description: generatedClip.hookReason,
     startSec: generatedClip.startSec,
     endSec: generatedClip.endSec,
@@ -580,7 +588,7 @@ export const useClipForgeStore = create<ClipForgeState>()(
           return;
         }
 
-        set({ projects: DEMO_PROJECTS.map((project) => normalizeProject(project)) });
+        set({ projects: sortProjectsByRecent(DEMO_PROJECTS.map((project) => normalizeProject(project))) });
       },
       addQueueItem: (item) => set((state) => ({ queue: [item, ...state.queue].slice(0, 5) })),
       updateQueueItem: (id, partial) =>
@@ -615,7 +623,7 @@ export const useClipForgeStore = create<ClipForgeState>()(
           metadata: {},
           processingSteps: [],
           progress: 0,
-          insight: "ClipForge is warming up the analysis engine.",
+          insight: "Video sudah masuk. Backend sedang menyiapkan analisis awal.",
           settings: DEFAULT_PROJECT_SETTINGS
         };
 
@@ -623,7 +631,7 @@ export const useClipForgeStore = create<ClipForgeState>()(
 
         set((state) => ({
           currentProjectId: normalizedProject.id,
-          projects: [normalizedProject, ...state.projects.filter((item) => item.id !== normalizedProject.id)]
+          projects: sortProjectsByRecent([normalizedProject, ...state.projects.filter((item) => item.id !== normalizedProject.id)])
         }));
         return normalizedProject;
       },
@@ -635,14 +643,16 @@ export const useClipForgeStore = create<ClipForgeState>()(
         })),
       upsertProject: (project) =>
         set((state) => ({
-          projects: state.projects.some((item) => item.id === project.id)
-            ? state.projects.map((item) => (item.id === project.id ? normalizeProject(project) : item))
-            : [normalizeProject(project), ...state.projects]
+          projects: sortProjectsByRecent(
+            state.projects.some((item) => item.id === project.id)
+              ? state.projects.map((item) => (item.id === project.id ? normalizeProject(project) : item))
+              : [normalizeProject(project), ...state.projects]
+          )
         })),
       updateProject: (projectId, updater) =>
         set((state) => ({
-          projects: state.projects.map((project) =>
-            project.id === projectId ? normalizeProject(updater(project)) : project
+          projects: sortProjectsByRecent(
+            state.projects.map((project) => (project.id === projectId ? normalizeProject(updater(project)) : project))
           )
         })),
       approveClip: (projectId, clipId) =>
@@ -781,10 +791,12 @@ export const useClipForgeStore = create<ClipForgeState>()(
         set((state) => ({
           currentProjectId: projectId,
           clips: clips.map((clip, index) => normalizeGeneratedClip(clip, index)),
-          projects: state.projects.map((project) =>
-            project.id === projectId
-              ? normalizeProject(applyGeneratedClips(project, clips.map((clip, index) => normalizeGeneratedClip(clip, index))))
-              : project
+          projects: sortProjectsByRecent(
+            state.projects.map((project) =>
+              project.id === projectId
+                ? normalizeProject(applyGeneratedClips(project, clips.map((clip, index) => normalizeGeneratedClip(clip, index))))
+                : project
+            )
           )
         })),
       resetProcessingState: () =>
@@ -834,7 +846,7 @@ export const useClipForgeStore = create<ClipForgeState>()(
           ...currentState,
           ...persisted,
           projects: Array.isArray(persisted.projects)
-            ? persisted.projects.map((project) => normalizeProject(project))
+            ? sortProjectsByRecent(persisted.projects.map((project) => normalizeProject(project)))
             : currentState.projects,
           currentProjectId: typeof persisted.currentProjectId === "string" ? persisted.currentProjectId : currentState.currentProjectId,
           processingStage:

@@ -169,14 +169,14 @@ function createThumbnails(title: string, image: string): ThumbnailVariant[] {
 
 function createProcessingSteps(progress = 100): ProcessingStep[] {
   const steps: ProcessingStep[] = [
-    { id: "uploaded", label: "Video uploaded", description: "Source ingested and validated.", state: "complete", progress: 100 },
-    { id: "transcribing", label: "Transcribing audio", description: "Whisper word-level transcript.", state: progress >= 20 ? "complete" : "active", progress: Math.min(progress, 20) * 5 },
-    { id: "analyzing", label: "AI analyzing hooks", description: "Scoring segments across 8 viral dimensions.", state: progress >= 35 ? "complete" : progress >= 21 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 20, 15)) * 7 },
-    { id: "clipping", label: "Generating clips", description: "Optimal in and out points locked.", state: progress >= 55 ? "complete" : progress >= 36 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 35, 20)) * 5 },
-    { id: "captions", label: "Applying captions", description: "Animated caption styles rendered.", state: progress >= 70 ? "complete" : progress >= 56 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 55, 15)) * 6 },
-    { id: "thumbnails", label: "Creating thumbnails", description: "Best frame extraction and overlays.", state: progress >= 85 ? "complete" : progress >= 71 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 70, 15)) * 6 },
-    { id: "metadata", label: "Generating metadata", description: "Titles, captions, hashtags, tags.", state: progress >= 95 ? "complete" : progress >= 86 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 85, 10)) * 10 },
-    { id: "ready", label: "Ready to review", description: "Clips are available in the review grid.", state: progress >= 100 ? "complete" : "pending", progress: progress >= 100 ? 100 : 0 }
+    { id: "uploaded", label: "Video diunggah", description: "Source masuk dan lolos validasi awal.", state: "complete", progress: 100 },
+    { id: "transcribing", label: "Mentranskripsi audio", description: "Audio diurai menjadi timeline kata.", state: progress >= 20 ? "complete" : "active", progress: Math.min(progress, 20) * 5 },
+    { id: "analyzing", label: "AI menilai hook", description: "Segmen diberi skor di beberapa dimensi viral.", state: progress >= 35 ? "complete" : progress >= 21 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 20, 15)) * 7 },
+    { id: "clipping", label: "Membuat clip", description: "Titik masuk dan keluar terbaik sedang dikunci.", state: progress >= 55 ? "complete" : progress >= 36 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 35, 20)) * 5 },
+    { id: "captions", label: "Merapikan caption", description: "Caption dasar sedang disusun untuk review.", state: progress >= 70 ? "complete" : progress >= 56 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 55, 15)) * 6 },
+    { id: "thumbnails", label: "Menyiapkan thumbnail", description: "Frame terbaik dan overlay dasar sedang dipilih.", state: progress >= 85 ? "complete" : progress >= 71 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 70, 15)) * 6 },
+    { id: "metadata", label: "Menyusun metadata", description: "Judul, caption, hashtag, dan tag sedang dirapikan.", state: progress >= 95 ? "complete" : progress >= 86 ? "active" : "pending", progress: Math.max(0, Math.min(progress - 85, 10)) * 10 },
+    { id: "ready", label: "Siap direview", description: "Clip sudah tersedia di area review.", state: progress >= 100 ? "complete" : "pending", progress: progress >= 100 ? 100 : 0 }
   ];
 
   return steps;

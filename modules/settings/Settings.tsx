@@ -30,15 +30,15 @@ export function Settings() {
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="space-y-5">
           <div>
-            <p className="font-medium text-white">Kunci API</p>
-            <p className="text-sm text-white/55">Kunci disimpan secara lokal lewat persistence Zustand untuk tahap prototipe ini. Prioritas sekarang Groq free tier, OpenAI tetap didukung.</p>
+            <p className="font-medium text-white">Kunci API AI</p>
+            <p className="text-sm text-white/55">Kunci disimpan secara lokal lewat persistence Zustand untuk tahap prototipe ini. Groq jadi jalur hemat yang direkomendasikan, dan provider lain tetap bisa dipakai kalau backend mendukung.</p>
           </div>
 
           <div className="grid gap-3">
             <Input
               value={draft.openAiKey ?? ""}
               onChange={(event) => setDraft((current) => ({ ...current, openAiKey: event.target.value }))}
-              placeholder="Kunci API Groq atau OpenAI"
+              placeholder="Kunci API provider AI"
             />
             <Input
               value={draft.youtubeKey ?? ""}
@@ -58,7 +58,7 @@ export function Settings() {
           </div>
 
           <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-sm leading-6 text-white/55">
-            Isi satu key AI saja di sini kalau kamu mau override secret server. Untuk Hugging Face Space, lebih aman isi{" "}
+            Isi satu key AI saja di sini kalau kamu mau override secret server. Untuk Hugging Face Space, paling aman isi{" "}
             <code>GROQ_API_KEY</code> langsung di <code>Settings -&gt; Variables and secrets</code>.
           </div>
         </Card>

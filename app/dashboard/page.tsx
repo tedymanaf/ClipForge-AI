@@ -32,10 +32,29 @@ export default function DashboardPage() {
   const processingStage = useClipForgeStore((state) => state.processingStage);
   const processingProgress = useClipForgeStore((state) => state.processingProgress);
   const seedDemoProjects = useClipForgeStore((state) => state.seedDemoProjects);
-  const project = projects[0];
+
+  const sortedProjects = useMemo(
+    () => {
+      const resolveTime = (value?: string) => {
+        const parsed = Date.parse(value || "");
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      return [...projects].sort(
+        (left, right) => resolveTime(right.updatedAt || right.createdAt) - resolveTime(left.updatedAt || left.createdAt)
+      );
+    },
+    [projects]
+  );
   const activeProject = useMemo(
     () => projects.find((item) => item.id === currentProjectId) ?? null,
     [projects, currentProjectId]
+  );
+  const latestProject = sortedProjects[0] ?? null;
+  const project = activeProject ?? latestProject;
+  const libraryProject = useMemo(
+    () => (project?.clips.length ? project : sortedProjects.find((item) => item.clips.length > 0) ?? null),
+    [project, sortedProjects]
   );
   const hasActiveProcessing =
     processingStage === "uploading" ||
@@ -166,7 +185,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="rounded-[28px] border border-dashed border-white/10 bg-black/20 p-6 text-sm leading-6 text-white/55">
-                  Belum ada project aktif. Upload video baru atau jalankan mode demo untuk melihat alur lengkapnya.
+                  Belum ada project aktif. Upload satu video baru untuk mulai, atau jalankan mode demo kalau ingin melihat alur tanpa file sendiri.
                 </div>
               )}
 
@@ -283,11 +302,11 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {projects.length === 0 ? (
                 <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-5 text-sm text-white/55">
-                  Belum ada source video. Mulai dari upload atau aktifkan demo mode.
+                  Belum ada video di workspace. Mulai dari upload supaya project terbaru langsung muncul di sini.
                 </div>
               ) : null}
 
-              {projects.slice(0, 4).map((item) => (
+              {sortedProjects.slice(0, 4).map((item) => (
                 <Link href={getProjectPrimaryRoute(item)} key={item.id}>
                   <div className="grid gap-4 rounded-[24px] border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07] md:grid-cols-[112px_1fr]">
                     <div
@@ -347,13 +366,13 @@ export default function DashboardPage() {
                 <p className="text-sm text-white/55">Tempat tercepat untuk membandingkan kandidat dan masuk ke editor.</p>
               </div>
             </div>
-            {project ? <Badge className="w-fit">{project.name}</Badge> : null}
+            {libraryProject ? <Badge className="w-fit">{libraryProject.name}</Badge> : null}
           </div>
 
-          {project ? (
+          {libraryProject ? (
             <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
-              {project.clips.map((clip) => (
-                <ClipCard key={clip.id} clip={clip} project={project} />
+              {libraryProject.clips.map((clip) => (
+                <ClipCard key={clip.id} clip={clip} project={libraryProject} />
               ))}
             </div>
           ) : (
@@ -363,9 +382,9 @@ export default function DashboardPage() {
                   <Clapperboard className="h-5 w-5 text-cyan-200" />
                 </div>
                 <div>
-                  <p className="font-medium text-white">Clip library masih kosong</p>
+                  <p className="font-medium text-white">Belum ada clip siap review</p>
                   <p className="mt-2 text-sm leading-6 text-white/60">
-                    Upload video atau aktifkan demo mode untuk mengisi library dengan clip kandidat.
+                    Selesaikan satu upload dulu. Setelah backend selesai, tiga kandidat clip akan langsung muncul di area ini.
                   </p>
                 </div>
               </div>

@@ -96,6 +96,14 @@ function formatEtaLabel(etaSec: number | null) {
   return seconds > 0 ? `${minutes} mnt ${seconds} dtk` : `${minutes} mnt`;
 }
 
+function sortProjectsByRecent<T extends { updatedAt?: string; createdAt?: string }>(projects: T[]) {
+  return [...projects].sort((left, right) => {
+    const rightTime = Date.parse(right.updatedAt || right.createdAt || "");
+    const leftTime = Date.parse(left.updatedAt || left.createdAt || "");
+    return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+  });
+}
+
 function getStageCategory(stage: BackendProcessingStage | "idle") {
   if (stage === "uploading") {
     return "upload jaringan";
@@ -277,9 +285,9 @@ function mapStageMessage(stage: BackendProcessingStage, fallback?: string) {
     case "uploading":
       return "Video sedang diunggah ke server.";
     case "transcribing":
-      return "Audio sedang ditranskripsi dengan Whisper.";
+      return "Audio sedang ditranskripsi oleh provider AI yang aktif.";
     case "scoring":
-      return "GPT-4o-mini sedang memilih 3 segmen terbaik.";
+      return "Model AI sedang memilih 3 segmen terbaik.";
     case "cutting":
       return "Backend sedang memotong 3 clip MP4 dengan ffmpeg.";
     case "ready":
@@ -351,9 +359,21 @@ export function UploadEngine() {
   const setGeneratedClips = useClipForgeStore((state) => state.setGeneratedClips);
 
   const canUpload = !working;
-  const recentProjects = useMemo(() => projects.slice(0, 3), [projects]);
-  const displayStage = working ? processingStage : error ? "error" : "idle";
-  const displayProgress = working ? Math.max(processingProgress, 4) : 0;
+  const recentProjects = useMemo(() => sortProjectsByRecent(projects).slice(0, 3), [projects]);
+  const latestProject = useMemo(
+    () => recentProjects.find((project) => project.id === currentProjectId) ?? recentProjects[0] ?? null,
+    [recentProjects, currentProjectId]
+  );
+  const displayStage =
+    working
+      ? processingStage
+      : error
+        ? "error"
+        : processingStage === "ready" && latestProject
+          ? "ready"
+          : "idle";
+  const displayProgress =
+    displayStage === "ready" ? 100 : working ? Math.max(processingProgress, 4) : 0;
   const stageCategory = getStageCategory(displayStage);
 
   function resetLocalFlow(message?: string) {
@@ -582,7 +602,7 @@ export function UploadEngine() {
       }
 
       setProcessingStatus("error", processingProgress || 100);
-      setFlowMessage("Proses gagal. Coba cek Groq atau OpenAI API key lalu upload ulang videonya.");
+      setFlowMessage("Proses gagal. Cek secret AI provider kalau dipakai, atau upload ulang videonya.");
       setError(uploadError instanceof Error ? uploadError.message : "Upload gagal.");
       setWorking(false);
       pollAbortRef.current = null;
@@ -660,10 +680,10 @@ export function UploadEngine() {
           : displayStage === "cutting"
             ? "Hampir selesai. ffmpeg sedang memotong clip MP4 final untuk direview."
             : displayStage === "ready"
-              ? "Semua langkah utama selesai. Clip kandidat siap dibuka."
+              ? "Semua langkah utama selesai. Clip kandidat terbaru sudah siap dibuka."
               : displayStage === "error"
-                ? "Upload terakhir belum berhasil. Perbaiki key AI atau pilih video baru untuk mencoba lagi."
-              : "Belum ada proses aktif. Pilih satu video untuk memulai.";
+                ? "Upload terakhir belum berhasil. Periksa koneksi atau secret AI provider, lalu coba lagi."
+                : "Belum ada proses aktif. Pilih satu video untuk memulai.";
   const uploadMetrics =
     displayStage === "uploading" && uploadTelemetry
       ? [
@@ -686,13 +706,13 @@ export function UploadEngine() {
               <p className="section-eyebrow">Input Source</p>
               <h3 className="mt-3 text-3xl font-semibold text-white">Upload video lalu backend akan memproses clip sungguhan.</h3>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60">
-                Flow utamanya sekarang nyata: upload ke FastAPI, transkripsi Whisper, scoring GPT-4o-mini, potong 3 clip MP4, lalu review hasilnya.
+                Flow utamanya sekarang nyata: upload ke FastAPI, transkripsi AI, scoring AI, potong 3 clip MP4, lalu review hasilnya.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs text-white/50">
               <Badge>Max 500MB</Badge>
               <Badge>1 video tiap proses</Badge>
-              <Badge>Whisper + GPT-4o-mini</Badge>
+              <Badge>Groq ready</Badge>
             </div>
           </div>
 
@@ -778,7 +798,7 @@ export function UploadEngine() {
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {recentProjects.length === 0 ? (
               <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-5 text-sm text-white/55 md:col-span-3">
-                Project terbaru akan muncul di sini setelah backend selesai memotong clip.
+                Project terbaru akan muncul di sini begitu backend selesai menyiapkan clip review.
               </div>
             ) : null}
             {recentProjects.map((project) => (
@@ -814,7 +834,11 @@ export function UploadEngine() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="font-medium text-white">
-                {displayStage === "idle" ? "Belum ada video aktif" : activeUploadName ?? "Belum ada video aktif"}
+                {displayStage === "idle"
+                  ? "Belum ada video aktif"
+                  : displayStage === "ready"
+                    ? latestProject?.name ?? activeUploadName ?? "Project terbaru siap direview"
+                    : activeUploadName ?? latestProject?.name ?? "Belum ada video aktif"}
               </p>
               <p className="mt-2 text-sm leading-6 text-white/60">{flowMessage}</p>
               <p className="mt-2 text-sm leading-6 text-white/45">{stageGuidance}</p>
@@ -876,7 +900,7 @@ export function UploadEngine() {
           <p className="font-medium text-white">Pipeline backend yang aktif</p>
           <div className="mt-3 space-y-2 text-sm text-white/65">
             <p>1. Upload video ke `/api/upload` dengan progress nyata.</p>
-            <p>2. Trigger `/api/process/{'{project_id}'}` untuk Whisper dan GPT-4o-mini.</p>
+            <p>2. Trigger `/api/process/{'{project_id}'}` untuk transkripsi AI, scoring, lalu pemotongan clip.</p>
             <p>3. Poll `/api/status/{'{project_id}'}` sampai clip siap direview.</p>
           </div>
         </div>

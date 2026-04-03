@@ -136,7 +136,7 @@ export default function ProcessingPage() {
     return (
       <AppShell title="Memuat project" eyebrow="Status Pipeline">
         <Card>
-          <p className="text-white/70">Restoring project data...</p>
+          <p className="text-white/70">Data project sedang dipulihkan. Tunggu sebentar...</p>
         </Card>
       </AppShell>
     );

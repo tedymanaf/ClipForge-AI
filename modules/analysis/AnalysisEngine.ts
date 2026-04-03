@@ -31,7 +31,7 @@ function buildProcessingSteps(progress: number): ProcessingStep[] {
     {
       id: "transcribing",
       label: "Mentranskripsi audio...",
-      description: "Timeline Whisper sampai level kata.",
+      description: "Timeline audio sedang diurai sampai level kata.",
       state: progress >= 20 ? "complete" : "active",
       progress: Math.min(progress * 5, 100)
     },
