@@ -153,7 +153,7 @@ pip install -r requirements.txt
 Jalankan FastAPI:
 
 ```bash
-uvicorn app:app --host 127.0.0.1 --port 8000 --reload
+uvicorn clipforge_api:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Jalankan Next.js:
