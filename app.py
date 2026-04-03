@@ -44,6 +44,15 @@ class ProcessResponse(BaseModel):
     clips: List[Dict[str, Any]]
 
 
+class AiProviderConfig(BaseModel):
+    provider: str
+    api_key: Optional[str]
+    base_url: Optional[str]
+    chat_model: str
+    transcription_model: str
+    label: str
+
+
 def project_dir(project_id: str) -> Path:
     return UPLOAD_ROOT / project_id
 
@@ -215,15 +224,43 @@ def cut_clip(video_path: Path, output_path: Path, start_sec: float, end_sec: flo
         )
 
 
+def resolve_ai_provider(api_key: Optional[str]) -> AiProviderConfig:
+    requested_provider = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
+    groq_key = os.getenv("GROQ_API_KEY")
+    use_groq = requested_provider == "groq" or (requested_provider == "auto" and bool(groq_key))
+
+    if use_groq:
+        return AiProviderConfig(
+            provider="groq",
+            api_key=api_key or groq_key,
+            base_url=os.getenv("GROQ_BASE_URL") or "https://api.groq.com/openai/v1",
+            chat_model=os.getenv("GROQ_CHAT_MODEL") or "openai/gpt-oss-20b",
+            transcription_model=os.getenv("GROQ_TRANSCRIPTION_MODEL") or "whisper-large-v3-turbo",
+            label="Groq",
+        )
+
+    return AiProviderConfig(
+        provider="openai",
+        api_key=api_key or os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_BASE_URL") or None,
+        chat_model=os.getenv("OPENAI_CHAT_MODEL") or "gpt-4o-mini",
+        transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL") or "whisper-1",
+        label="OpenAI",
+    )
+
+
 def resolve_openai_client(api_key: Optional[str]) -> OpenAI:
-    effective_key = api_key or os.getenv("OPENAI_API_KEY")
-    if not effective_key:
-        raise RuntimeError("OPENAI_API_KEY belum tersedia. Tambahkan secret di HF Spaces atau isi key dari frontend.")
-    return OpenAI(api_key=effective_key)
+    provider = resolve_ai_provider(api_key)
+    if not provider.api_key:
+        raise RuntimeError(
+            "AI API key belum tersedia. Tambahkan GROQ_API_KEY atau OPENAI_API_KEY di HF Spaces, atau isi key dari frontend."
+        )
+
+    return OpenAI(api_key=provider.api_key, base_url=provider.base_url)
 
 
-def has_openai_key(api_key: Optional[str]) -> bool:
-    return bool(api_key or os.getenv("OPENAI_API_KEY"))
+def has_ai_key(api_key: Optional[str]) -> bool:
+    return bool(resolve_ai_provider(api_key).api_key)
 
 
 def model_dump(payload: Any) -> Dict[str, Any]:
@@ -235,16 +272,17 @@ def model_dump(payload: Any) -> Dict[str, Any]:
 
 
 def transcribe_audio(audio_path: Path, duration_sec: float, api_key: Optional[str]) -> Dict[str, Any]:
-    if not has_openai_key(api_key):
+    if not has_ai_key(api_key):
         return {
-            "text": "Fallback transcript generated because OPENAI_API_KEY is not configured.",
+            "text": "Fallback transcript generated because AI API key is not configured.",
             "segments": build_duration_segments(duration_sec),
         }
 
+    provider = resolve_ai_provider(api_key)
     client = resolve_openai_client(api_key)
     with audio_path.open("rb") as audio_file:
         response = client.audio.transcriptions.create(
-            model="whisper-1",
+            model=provider.transcription_model,
             file=audio_file,
             response_format="verbose_json",
             timestamp_granularities=["segment"],
@@ -316,7 +354,7 @@ def build_duration_segments(duration_sec: float) -> List[Dict[str, Any]]:
             {
                 "start": round(start, 2),
                 "end": round(end, 2),
-                "text": f"Fallback segment {index + 1} generated from video timing because OpenAI API key is not set."
+                "text": f"Fallback segment {index + 1} generated from video timing because no AI API key is set."
             }
         )
 
@@ -376,9 +414,10 @@ def heuristic_clips_from_segments(segments: List[Dict[str, Any]], duration_sec: 
 
 
 def score_transcript_segments(segments: List[Dict[str, Any]], duration_sec: float, api_key: Optional[str]) -> List[Dict[str, Any]]:
-    if not has_openai_key(api_key):
+    if not has_ai_key(api_key):
         return heuristic_clips_from_segments(segments, duration_sec)
 
+    provider = resolve_ai_provider(api_key)
     client = resolve_openai_client(api_key)
     transcript_prompt = build_transcript_prompt(segments)
     prompt = (
@@ -390,7 +429,7 @@ def score_transcript_segments(segments: List[Dict[str, Any]], duration_sec: floa
     )
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=provider.chat_model,
         response_format={"type": "json_object"},
         messages=[
             {
@@ -549,9 +588,15 @@ async def upload_video(file: UploadFile = File(...)) -> Dict[str, Any]:
 
 
 @app.post("/api/process/{project_id}", response_model=ProcessResponse)
-def process_project(project_id: str, x_openai_api_key: Optional[str] = Header(default=None)) -> ProcessResponse:
+def process_project(
+    project_id: str,
+    x_openai_api_key: Optional[str] = Header(default=None),
+    x_groq_api_key: Optional[str] = Header(default=None),
+    x_ai_api_key: Optional[str] = Header(default=None),
+) -> ProcessResponse:
     manifest = load_manifest(project_id)
     current_clips = read_json(clips_path(project_id), {"clips": []}).get("clips", [])
+    client_api_key = x_ai_api_key or x_groq_api_key or x_openai_api_key
 
     with status_lock:
         worker = worker_cache.get(project_id)
@@ -568,7 +613,7 @@ def process_project(project_id: str, x_openai_api_key: Optional[str] = Header(de
         raise HTTPException(status_code=404, detail="Uploaded source file not found.")
 
     set_status(project_id, "transcribing", 10, "Processing started.")
-    worker = threading.Thread(target=process_project_worker, args=(project_id, x_openai_api_key), daemon=True)
+    worker = threading.Thread(target=process_project_worker, args=(project_id, client_api_key), daemon=True)
     with status_lock:
         worker_cache[project_id] = worker
     worker.start()

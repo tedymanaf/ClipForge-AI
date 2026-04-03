@@ -333,7 +333,7 @@ export function UploadEngine() {
   async function beginBackendProcessing(projectId: string) {
     const response = await fetch(`/api/process/${projectId}`, {
       method: "POST",
-      headers: preferences.openAiKey ? { "x-openai-api-key": preferences.openAiKey } : undefined
+      headers: preferences.openAiKey ? { "x-ai-api-key": preferences.openAiKey } : undefined
     });
 
     if (!response.ok) {
@@ -493,7 +493,7 @@ export function UploadEngine() {
       }
 
       setProcessingStatus("error", processingProgress || 100);
-      setFlowMessage("Proses gagal. Coba cek OpenAI API key lalu upload ulang videonya.");
+      setFlowMessage("Proses gagal. Coba cek Groq atau OpenAI API key lalu upload ulang videonya.");
       setError(uploadError instanceof Error ? uploadError.message : "Upload gagal.");
       setWorking(false);
       pollAbortRef.current = null;

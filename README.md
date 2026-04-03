@@ -66,8 +66,8 @@ Pipeline backend berjalan seperti ini:
 
 1. Simpan video upload ke `/tmp/uploads/{project_id}/`
 2. Ekstrak audio dengan ffmpeg
-3. Transkripsi dengan OpenAI Whisper `whisper-1`
-4. Skor segmen terbaik dengan `gpt-4o-mini`
+3. Transkripsi dengan Groq `whisper-large-v3-turbo` atau OpenAI `whisper-1`
+4. Skor segmen terbaik dengan Groq `openai/gpt-oss-20b` atau OpenAI `gpt-4o-mini`
 5. Potong 3 clip MP4 dengan ffmpeg
 
 ### Exact ffmpeg commands
@@ -118,7 +118,15 @@ State ini di-reset saat upload baru dimulai agar dashboard tidak membawa sisa pr
 Contoh file `.env.example`:
 
 ```bash
+AI_PROVIDER=groq
+GROQ_API_KEY=gsk_xxx
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_CHAT_MODEL=openai/gpt-oss-20b
+GROQ_TRANSCRIPTION_MODEL=whisper-large-v3-turbo
+
 OPENAI_API_KEY=sk-xxx
+OPENAI_CHAT_MODEL=gpt-4o-mini
+OPENAI_TRANSCRIPTION_MODEL=whisper-1
 CLIPFORGE_FASTAPI_URL=http://127.0.0.1:8000
 ```
 
@@ -130,14 +138,19 @@ Di halaman Space, buka:
 
 Tambahkan secret berikut:
 
-- `OPENAI_API_KEY`
+- `GROQ_API_KEY`
 
 Optional:
 
+- `AI_PROVIDER=groq`
+- `GROQ_CHAT_MODEL`
+- `GROQ_TRANSCRIPTION_MODEL`
+- `OPENAI_API_KEY`
 - `CLIPFORGE_FASTAPI_URL`
 
 Catatan:
 
+- Default rekomendasi sekarang adalah `Groq`, karena lebih dekat ke OpenAI-compatible stack yang sudah dipakai backend ini.
 - Untuk Docker Space ini, `CLIPFORGE_FASTAPI_URL` sudah default ke `http://127.0.0.1:8000`, jadi biasanya tidak perlu diubah.
 - Storage Hugging Face free tier bersifat sementara, jadi file clip akan hilang saat Space restart. Ini normal untuk prototipe tanpa persistent volume.
 
