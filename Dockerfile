@@ -36,4 +36,4 @@ ENV NODE_ENV=production
 
 EXPOSE 7860
 
-CMD ["sh", "-lc", "uvicorn clipforge_api:app --host 127.0.0.1 --port 8000 & exec npm run start -- -H 0.0.0.0 -p ${PORT:-7860}"]
+CMD ["sh", "-lc", "uvicorn clipforge_api:app --host 127.0.0.1 --port 8000 >/tmp/fastapi.log 2>&1 & exec npm run start -- -H 0.0.0.0 -p ${PORT:-7860}"]

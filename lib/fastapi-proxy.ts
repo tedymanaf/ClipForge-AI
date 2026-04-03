@@ -1,3 +1,5 @@
+import { readFile } from "fs/promises";
+
 const FASTAPI_BASE_URL = process.env.CLIPFORGE_FASTAPI_URL ?? "http://127.0.0.1:8000";
 
 function buildProxyHeaders(source: Headers) {
@@ -36,11 +38,20 @@ export async function proxyToFastApi(request: Request, path: string) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "FastAPI backend is unavailable.";
+    let backendLogTail: string | undefined;
+
+    try {
+      const rawLog = await readFile("/tmp/fastapi.log", "utf-8");
+      backendLogTail = rawLog.split(/\r?\n/).slice(-25).join("\n").trim() || undefined;
+    } catch {
+      backendLogTail = undefined;
+    }
 
     return Response.json(
       {
         detail: "Backend FastAPI tidak bisa dijangkau dari Next.js.",
-        error: message
+        error: message,
+        backendLogTail
       },
       { status: 502 }
     );
