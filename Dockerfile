@@ -5,7 +5,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 ENV HOME=/home/node \
-  PATH=/home/node/.local/bin:$PATH \
+  VIRTUAL_ENV=/opt/venv \
+  PATH=/opt/venv/bin:/home/node/.local/bin:$PATH \
   PORT=7860 \
   HOSTNAME=0.0.0.0 \
   NEXT_TELEMETRY_DISABLED=1 \
@@ -18,7 +19,9 @@ COPY --chown=node:node package.json package-lock.json ./
 RUN npm install --no-audit --no-fund
 
 COPY requirements.txt ./
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN python3 -m venv $VIRTUAL_ENV \
+  && $VIRTUAL_ENV/bin/pip install --no-cache-dir --upgrade pip \
+  && $VIRTUAL_ENV/bin/pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=node:node . .
 
