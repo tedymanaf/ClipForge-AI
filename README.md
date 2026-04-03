@@ -92,7 +92,7 @@ ffmpeg -y -ss {start} -to {end} -i input.mp4 -c:v libx264 -c:a aac clip_{id}.mp4
 
 ## Frontend Next.js
 
-Frontend sekarang memanggil backend FastAPI lewat rewrite di `next.config.mjs`:
+Frontend sekarang memanggil backend FastAPI lewat route handler proxy di `app/api/*`:
 
 - `/api/upload`
 - `/api/process/:projectId`
